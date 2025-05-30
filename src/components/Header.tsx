@@ -24,6 +24,17 @@ export default function Header({ user }: HeaderProps) {
         </div>
 
         <div className="flex items-center space-x-6">
+          {/* Admin Panel Button - Only for admins */}
+          {user.role === 'admin' && (
+            <Link
+              href="/admin"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"
+            >
+              <Crown className="w-4 h-4 mr-2" />
+              Admin Panel
+            </Link>
+          )}
+          
           {/* User Info */}
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
@@ -31,9 +42,9 @@ export default function Header({ user }: HeaderProps) {
                 {user.name.charAt(0).toUpperCase()}
               </span>
             </div>
-            <div>
-              <p className="text-sm font-medium text-white">{user.name}</p>
-              <p className="text-xs text-gray-400">{user.email}</p>
+            <div className="text-right">
+              <p className="text-white text-sm font-medium">{user.name}</p>
+              <p className="text-gray-400 text-xs">{user.subscription.tierName}</p>
             </div>
           </div>
         </div>

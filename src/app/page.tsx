@@ -28,13 +28,6 @@ export default function ConsolePage() {
     }
   }, [isAuthenticated, isLoading, router])
 
-  // Redirect admins to admin panel
-  useEffect(() => {
-    if (user?.role === 'admin') {
-      router.push('/admin')
-    }
-  }, [user, router])
-
   // Show loading screen
   if (isLoading) {
     return (

@@ -323,6 +323,14 @@ export default function AdminPage() {
             </div>
             
             <button
+              onClick={() => router.push('/')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Console
+            </button>
+            
+            <button
               onClick={handleLogout}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
