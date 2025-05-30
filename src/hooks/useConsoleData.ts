@@ -377,20 +377,32 @@ export function useConsoleData() {
   useEffect(() => {
     if (!user) return
 
-    const savedAgents = localStorage.getItem(getUserKey('agents'))
-    const savedCampaigns = localStorage.getItem(getUserKey('campaigns'))
-    const savedContactLists = localStorage.getItem(getUserKey('contactLists'))
-
-    if (savedAgents) {
-      setAgents(JSON.parse(savedAgents))
+    // For all users, load admin-managed agents first
+    const adminAgents = localStorage.getItem('admin-agents')
+    let allAgents: Agent[] = []
+    
+    if (adminAgents) {
+      allAgents = JSON.parse(adminAgents)
     } else {
-      // Initialize with predefined agents for new users (filtered by user access)
-      const userAgents = PREDEFINED_AGENTS.filter(agent => 
-        agent.assignedUsers.includes(user.id) || user.role === 'admin'
+      // Initialize with predefined agents if no admin agents exist
+      allAgents = PREDEFINED_AGENTS
+    }
+    
+    // Filter agents based on user role and assignments
+    if (user.role === 'admin') {
+      setAgents(allAgents)
+    } else {
+      // Regular users only see their assigned agents
+      const userAgents = allAgents.filter(agent => 
+        agent.assignedUsers.includes(user.id)
       )
       setAgents(userAgents)
     }
 
+    // Load campaigns and contact lists
+    const savedCampaigns = localStorage.getItem(getUserKey('campaigns'))
+    const savedContactLists = localStorage.getItem(getUserKey('contactLists'))
+    
     if (savedCampaigns) {
       setCampaigns(JSON.parse(savedCampaigns))
     }
@@ -403,7 +415,10 @@ export function useConsoleData() {
   // Save data to localStorage when state changes
   useEffect(() => {
     if (!user) return
-    localStorage.setItem(getUserKey('agents'), JSON.stringify(agents))
+    // Only admin can save agents globally
+    if (user.role === 'admin' && agents.length > 0) {
+      localStorage.setItem('admin-agents', JSON.stringify(agents))
+    }
     updateStats()
   }, [agents, user])
 
@@ -451,7 +466,9 @@ export function useConsoleData() {
       agent.assignedUsers.includes(user.id)
     )
     
-    return assignedAgents.slice(0, user.subscription.maxAgents)
+    // Check if user has subscription data before slicing
+    const maxAgents = user.subscription?.maxAgents || 0
+    return assignedAgents.slice(0, maxAgents)
   }, [agents, user])
 
   // Agent operations (customers can only update customerConfig)
