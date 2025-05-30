@@ -38,16 +38,34 @@ export default function EditAgentPage() {
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    const foundAgent = agents.find(a => a.id === agentId)
+    // Load agents from localStorage (admin-managed)
+    const adminAgents = localStorage.getItem('admin-agents')
+    let allAgents: Agent[] = []
+    
+    if (adminAgents) {
+      allAgents = JSON.parse(adminAgents)
+    }
+    
+    const foundAgent = allAgents.find(a => a.id === agentId)
     if (foundAgent) {
       setAgent(foundAgent)
       setFormData(foundAgent.customerConfig)
       if (foundAgent.schedule) {
         setScheduleData(foundAgent.schedule)
       }
-    } else {
-      toast.error('Agent not found')
-      router.push('/')
+    } else if (agents.length > 0) {
+      // Fallback to agents from hook if admin agents not found
+      const foundAgentFromHook = agents.find(a => a.id === agentId)
+      if (foundAgentFromHook) {
+        setAgent(foundAgentFromHook)
+        setFormData(foundAgentFromHook.customerConfig)
+        if (foundAgentFromHook.schedule) {
+          setScheduleData(foundAgentFromHook.schedule)
+        }
+      } else {
+        toast.error('Agent not found')
+        router.push('/')
+      }
     }
   }, [agentId, agents, router])
 

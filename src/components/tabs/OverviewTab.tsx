@@ -6,9 +6,10 @@ interface OverviewTabProps {
   subscription: UserSubscription
   createCampaign: (campaignData: Omit<Campaign, 'id' | 'createdAt'>) => Campaign
   addContactList: (listData: Omit<ContactList, 'id' | 'createdAt' | 'updatedAt'>) => ContactList
+  onTabChange?: (tab: string) => void
 }
 
-export default function OverviewTab({ stats, subscription }: OverviewTabProps) {
+export default function OverviewTab({ stats, subscription, onTabChange }: OverviewTabProps) {
   const statsData = [
     {
       title: 'Total Calls',
@@ -81,11 +82,17 @@ export default function OverviewTab({ stats, subscription }: OverviewTabProps) {
       <div className="dashboard-card rounded-xl p-6">
         <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
         <div className="flex space-x-4">
-          <button className="btn-secondary font-medium px-6 py-3 rounded-lg flex items-center">
+          <button 
+            onClick={() => onTabChange?.('contacts')}
+            className="btn-secondary font-medium px-6 py-3 rounded-lg flex items-center hover:bg-gray-700 transition-colors"
+          >
             <Users className="w-4 h-4 mr-2" />
             Upload Contacts
           </button>
-          <button className="btn-secondary font-medium px-6 py-3 rounded-lg flex items-center">
+          <button 
+            onClick={() => onTabChange?.('campaigns')}
+            className="btn-secondary font-medium px-6 py-3 rounded-lg flex items-center hover:bg-gray-700 transition-colors"
+          >
             <Megaphone className="w-4 h-4 mr-2" />
             Start Campaign
           </button>

@@ -54,6 +54,7 @@ export default function ConsolePage() {
             subscription={user.subscription}
             createCampaign={consoleData.createCampaign}
             addContactList={consoleData.addContactList}
+            onTabChange={(tab) => setActiveTab(tab as TabType)}
           />
         )
       case 'agents':
@@ -95,6 +96,7 @@ export default function ConsolePage() {
             subscription={user.subscription}
             createCampaign={consoleData.createCampaign}
             addContactList={consoleData.addContactList}
+            onTabChange={(tab) => setActiveTab(tab as TabType)}
           />
         )
     }

@@ -243,27 +243,6 @@ export default function AgentsTab({ agents, subscription, updateAgent }: AgentsT
         ))}
       </div>
 
-      {agents.length < subscription.maxAgents && (
-        <div className="dashboard-card rounded-xl p-6">
-          <div className="text-center py-8">
-            <Crown className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">
-              Unlock More Agents
-            </h3>
-            <p className="text-gray-400 mb-4">
-              Contact your administrator to upgrade your subscription plan and access more voice agents
-            </p>
-            <div className="flex justify-center">
-              <div className="px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg">
-                <p className="text-sm text-gray-400">
-                  Using {activeAgents} of {subscription.maxAgents} available agents
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {agents.length === 0 && (
         <div className="dashboard-card rounded-xl p-6">
           <div className="text-center py-12">
