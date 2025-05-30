@@ -7,7 +7,6 @@ interface AgentsTabProps {
   agents: Agent[]
   subscription: UserSubscription
   updateAgent: (id: string, updates: Partial<Agent>) => void
-  updateSubscription: (tierId: 'basic' | 'starter' | 'professional' | 'enterprise') => void
 }
 
 export default function AgentsTab({ agents, subscription, updateAgent }: AgentsTabProps) {
@@ -41,35 +40,23 @@ export default function AgentsTab({ agents, subscription, updateAgent }: AgentsT
     return 'Just now'
   }
 
-  const getVoiceTypeDisplay = (voice: Agent['configuration']['voice']) => {
-    switch (voice) {
-      case 'hyper-realistic': return 'Hyper Realistic'
-      case 'realistic': return 'Realistic'
-      case 'custom': return 'Custom'
-      case 'professional': return 'Professional'
-      case 'standard': return 'Standard'
-      default: return voice
-    }
+  const getVoiceTypeDisplay = (ttsProvider: string) => {
+    // Since customers don't see technical details, we'll show a simplified version
+    return 'Voice Enabled'
   }
 
-  const getVoiceTypeColor = (voice: Agent['configuration']['voice']) => {
-    switch (voice) {
-      case 'hyper-realistic': return 'bg-purple-500/20 text-purple-400'
-      case 'realistic': return 'bg-blue-500/20 text-blue-400'
-      case 'custom': return 'bg-orange-500/20 text-orange-400'
-      case 'professional': return 'bg-green-500/20 text-green-400'
-      case 'standard': return 'bg-gray-500/20 text-gray-400'
-      default: return 'bg-gray-500/20 text-gray-400'
-    }
+  const getVoiceTypeColor = (ttsProvider: string) => {
+    return 'bg-blue-500/20 text-blue-400'
   }
 
-  const getLanguageDisplay = (language: Agent['configuration']['language']) => {
-    return language === 'en-US' ? 'English (US)' : 'Arabic'
+  const getLanguageDisplay = (callHours: any) => {
+    // Simplified language display
+    return 'Multi-language'
   }
 
-  const getResponseTimeLabel = (responseTime: number) => {
-    if (responseTime < 1500) return 'Very Fast'
-    if (responseTime < 2500) return 'Normal'
+  const getResponseTimeLabel = (responseDelay: number) => {
+    if (responseDelay < 1500) return 'Very Fast'
+    if (responseDelay < 2500) return 'Normal'
     return 'Thoughtful'
   }
 
@@ -154,18 +141,18 @@ export default function AgentsTab({ agents, subscription, updateAgent }: AgentsT
                       <Volume2 className="w-4 h-4 text-gray-500" />
                       <div>
                         <p className="text-xs text-gray-500 uppercase tracking-wide">Voice</p>
-                        <span className={`text-xs px-2 py-1 rounded font-medium ${getVoiceTypeColor(agent.configuration.voice)}`}>
-                          {getVoiceTypeDisplay(agent.configuration.voice)}
+                        <span className="text-xs px-2 py-1 rounded font-medium bg-blue-500/20 text-blue-400">
+                          Professional Voice
                         </span>
                       </div>
                     </div>
 
-                    {/* Language */}
+                    {/* Speed */}
                     <div className="flex items-center space-x-2">
                       <Globe className="w-4 h-4 text-gray-500" />
                       <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">Language</p>
-                        <p className="text-sm text-gray-300">{getLanguageDisplay(agent.configuration.language)}</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Speed</p>
+                        <p className="text-sm text-gray-300">{agent.customerConfig.voiceSpeed}x</p>
                       </div>
                     </div>
 
@@ -175,7 +162,7 @@ export default function AgentsTab({ agents, subscription, updateAgent }: AgentsT
                       <div>
                         <p className="text-xs text-gray-500 uppercase tracking-wide">Response</p>
                         <p className="text-sm text-gray-300">
-                          {getResponseTimeLabel(agent.configuration.responseTime)} ({agent.configuration.responseTime}ms)
+                          {getResponseTimeLabel(agent.customerConfig.responseDelay)} ({agent.customerConfig.responseDelay}ms)
                         </p>
                       </div>
                     </div>
@@ -203,16 +190,16 @@ export default function AgentsTab({ agents, subscription, updateAgent }: AgentsT
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                       <div>
                         <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Personality</p>
-                        <p className="text-sm text-gray-300">{agent.configuration.personality}</p>
+                        <p className="text-sm text-gray-300">{agent.customerConfig.personality}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 uppercase tracking-wide mb-1 flex items-center">
                           <MessageSquare className="w-3 h-3 mr-1" />
-                          First Message
+                          Leading Message
                         </p>
                         <p className="text-sm text-gray-300 line-clamp-2">
-                          "{agent.configuration.firstMessage.substring(0, 80)}
-                          {agent.configuration.firstMessage.length > 80 ? '...' : ''}"
+                          "{agent.customerConfig.leadingMessage.substring(0, 80)}
+                          {agent.customerConfig.leadingMessage.length > 80 ? '...' : ''}"
                         </p>
                       </div>
                       {agent.schedule?.enabled && (

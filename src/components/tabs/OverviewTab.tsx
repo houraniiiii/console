@@ -1,11 +1,11 @@
 import { Phone, TrendingUp, Clock, Activity, Megaphone, Users } from 'lucide-react'
-import { ConsoleStats, Campaign, Contact, UserSubscription } from '@/types'
+import { ConsoleStats, Campaign, ContactList, UserSubscription } from '@/types'
 
 interface OverviewTabProps {
   stats: ConsoleStats
   subscription: UserSubscription
   createCampaign: (campaignData: Omit<Campaign, 'id' | 'createdAt'>) => Campaign
-  addContacts: (contactList: Omit<Contact, 'id' | 'createdAt'>[]) => Contact[]
+  addContactList: (listData: Omit<ContactList, 'id' | 'createdAt' | 'updatedAt'>) => ContactList
 }
 
 export default function OverviewTab({ stats, subscription }: OverviewTabProps) {

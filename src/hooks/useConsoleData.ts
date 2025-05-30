@@ -1,65 +1,209 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Agent, Campaign, Contact, ConsoleStats, UserSubscription } from '@/types'
+import { Agent, Campaign, Contact, ContactList, ConsoleStats, UserSubscription } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
 
-// Predefined agents available based on subscription
+// Predefined agents with enhanced technical configuration
 const PREDEFINED_AGENTS: Agent[] = [
   {
     id: 'agent-1',
-    name: 'Sales Agent',
-    description: 'Professional sales conversation specialist',
+    name: 'Sales Agent Pro',
+    description: 'Professional sales conversation specialist with advanced AI',
     status: 'inactive',
     createdAt: new Date('2024-01-01'),
-    configuration: {
-      voice: 'professional',
-      language: 'en-US',
+    ownerId: 'admin-1',
+    assignedUsers: [],
+    ec2Status: 'stopped',
+    technicalConfig: {
+      systemPrompt: 'You are a professional sales agent. Your goal is to engage prospects, understand their needs, and present solutions that match their requirements. Be friendly, professional, and persistent but not pushy.',
+      stt: {
+        provider: 'whisper',
+        model: 'whisper-1',
+        settings: {
+          language: 'en-US',
+          confidence_threshold: 0.8,
+          silence_timeout: 2000
+        }
+      },
+      llm: {
+        provider: 'openai',
+        model: 'gpt-4-turbo',
+        settings: {
+          temperature: 0.7,
+          max_tokens: 1000,
+          top_p: 1.0,
+          frequency_penalty: 0.1,
+          presence_penalty: 0.1
+        }
+      },
+      tts: {
+        provider: 'elevenlabs',
+        voiceId: 'professional-male-1',
+        settings: {
+          stability: 0.6,
+          similarity_boost: 0.8,
+          speed: 1.0,
+          pitch: 1.0
+        }
+      },
+      callSettings: {
+        max_call_duration: 300,
+        call_timeout: 30,
+        retry_attempts: 3,
+        call_recording: true
+      }
+    },
+    customerConfig: {
+      voiceSpeed: 1.0,
+      leadingMessage: 'Hello! I\'m calling to discuss an exciting opportunity that could benefit your business.',
       personality: 'Professional and persuasive',
-      responseTime: 2000,
-      firstMessage: 'Hello! I\'m calling to discuss an exciting opportunity that could benefit your business.'
+      responseDelay: 1500,
+      customInstructions: '',
+      callHours: {
+        start: '09:00',
+        end: '17:00',
+        timezone: 'UTC',
+        daysOfWeek: [1, 2, 3, 4, 5]
+      }
     },
     schedule: {
       enabled: true,
       startTime: '09:00',
       endTime: '17:00',
       timezone: 'UTC',
-      daysOfWeek: [1, 2, 3, 4, 5], // Monday to Friday
+      daysOfWeek: [1, 2, 3, 4, 5],
       autoActivate: true
     }
   },
   {
     id: 'agent-2',
-    name: 'Support Agent',
-    description: 'Customer service and support specialist',
+    name: 'Support Agent 24/7',
+    description: 'Customer service and support specialist available around the clock',
     status: 'inactive',
     createdAt: new Date('2024-01-01'),
-    configuration: {
-      voice: 'realistic',
-      language: 'en-US',
+    ownerId: 'admin-1',
+    assignedUsers: [],
+    ec2Status: 'stopped',
+    technicalConfig: {
+      systemPrompt: 'You are a helpful customer support agent. Your role is to assist customers with their questions, resolve issues, and ensure they have a positive experience. Be patient, empathetic, and solution-focused.',
+      stt: {
+        provider: 'deepgram',
+        model: 'nova-2',
+        settings: {
+          language: 'en-US',
+          confidence_threshold: 0.7,
+          silence_timeout: 1500
+        }
+      },
+      llm: {
+        provider: 'anthropic',
+        model: 'claude-3-sonnet',
+        settings: {
+          temperature: 0.5,
+          max_tokens: 800,
+          top_p: 0.9,
+          frequency_penalty: 0.0,
+          presence_penalty: 0.0
+        }
+      },
+      tts: {
+        provider: 'azure',
+        voiceId: 'friendly-female-1',
+        settings: {
+          stability: 0.7,
+          similarity_boost: 0.9,
+          speed: 1.1,
+          pitch: 1.0
+        }
+      },
+      callSettings: {
+        max_call_duration: 600,
+        call_timeout: 45,
+        retry_attempts: 2,
+        call_recording: true
+      }
+    },
+    customerConfig: {
+      voiceSpeed: 1.1,
+      leadingMessage: 'Hi there! I\'m here to help you with any questions or concerns you might have.',
       personality: 'Helpful and patient',
-      responseTime: 1500,
-      firstMessage: 'Hi there! I\'m here to help you with any questions or concerns you might have.'
+      responseDelay: 1000,
+      customInstructions: '',
+      callHours: {
+        start: '08:00',
+        end: '20:00',
+        timezone: 'UTC',
+        daysOfWeek: [0, 1, 2, 3, 4, 5, 6]
+      }
     },
     schedule: {
       enabled: true,
       startTime: '08:00',
       endTime: '20:00',
       timezone: 'UTC',
-      daysOfWeek: [0, 1, 2, 3, 4, 5, 6], // All days
+      daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
       autoActivate: true
     }
   },
   {
     id: 'agent-3',
-    name: 'Lead Qualifier',
-    description: 'Lead generation and qualification expert',
+    name: 'Lead Qualifier AI',
+    description: 'Lead generation and qualification expert with intelligent scoring',
     status: 'inactive',
     createdAt: new Date('2024-01-01'),
-    configuration: {
-      voice: 'hyper-realistic',
-      language: 'en-US',
+    ownerId: 'admin-1',
+    assignedUsers: [],
+    ec2Status: 'stopped',
+    technicalConfig: {
+      systemPrompt: 'You are a lead qualification specialist. Your goal is to identify potential customers, understand their needs, and qualify them based on budget, authority, need, and timeline. Be engaging and build rapport while gathering information.',
+      stt: {
+        provider: 'google',
+        model: 'latest',
+        settings: {
+          language: 'en-US',
+          confidence_threshold: 0.75,
+          silence_timeout: 1800
+        }
+      },
+      llm: {
+        provider: 'openai',
+        model: 'gpt-4-turbo',
+        settings: {
+          temperature: 0.6,
+          max_tokens: 900,
+          top_p: 0.95,
+          frequency_penalty: 0.05,
+          presence_penalty: 0.05
+        }
+      },
+      tts: {
+        provider: 'google',
+        voiceId: 'professional-neutral-1',
+        settings: {
+          stability: 0.65,
+          similarity_boost: 0.85,
+          speed: 1.05,
+          pitch: 1.0
+        }
+      },
+      callSettings: {
+        max_call_duration: 420,
+        call_timeout: 35,
+        retry_attempts: 3,
+        call_recording: true
+      }
+    },
+    customerConfig: {
+      voiceSpeed: 1.05,
+      leadingMessage: 'Good day! I\'d like to learn more about your business needs and see how we can help.',
       personality: 'Engaging and inquisitive',
-      responseTime: 1800,
-      firstMessage: 'Good day! I\'d like to learn more about your business needs and see how we can help.'
+      responseDelay: 1800,
+      customInstructions: '',
+      callHours: {
+        start: '10:00',
+        end: '16:00',
+        timezone: 'UTC',
+        daysOfWeek: [1, 2, 3, 4, 5]
+      }
     },
     schedule: {
       enabled: false,
@@ -72,38 +216,134 @@ const PREDEFINED_AGENTS: Agent[] = [
   },
   {
     id: 'agent-4',
-    name: 'Follow-up Agent',
-    description: 'Customer follow-up and retention specialist',
+    name: 'Follow-up Specialist',
+    description: 'Customer follow-up and retention specialist with personalized approach',
     status: 'inactive',
     createdAt: new Date('2024-01-01'),
-    configuration: {
-      voice: 'standard',
-      language: 'en-US',
+    ownerId: 'admin-1',
+    assignedUsers: [],
+    ec2Status: 'stopped',
+    technicalConfig: {
+      systemPrompt: 'You are a follow-up specialist focused on maintaining relationships and driving conversions. Be warm, personal, and reference previous interactions. Your goal is to move prospects through the sales funnel.',
+      stt: {
+        provider: 'azure',
+        model: 'latest',
+        settings: {
+          language: 'en-US',
+          confidence_threshold: 0.7,
+          silence_timeout: 2200
+        }
+      },
+      llm: {
+        provider: 'openai',
+        model: 'gpt-4',
+        settings: {
+          temperature: 0.8,
+          max_tokens: 850,
+          top_p: 1.0,
+          frequency_penalty: 0.0,
+          presence_penalty: 0.0
+        }
+      },
+      tts: {
+        provider: 'elevenlabs',
+        voiceId: 'warm-friendly-1',
+        settings: {
+          stability: 0.8,
+          similarity_boost: 0.9,
+          speed: 0.95,
+          pitch: 1.0
+        }
+      },
+      callSettings: {
+        max_call_duration: 360,
+        call_timeout: 40,
+        retry_attempts: 2,
+        call_recording: true
+      }
+    },
+    customerConfig: {
+      voiceSpeed: 0.95,
+      leadingMessage: 'Hello! I\'m following up on our previous conversation to see how things are going.',
       personality: 'Friendly and persistent',
-      responseTime: 2200,
-      firstMessage: 'Hello! I\'m following up on our previous conversation to see how things are going.'
+      responseDelay: 2200,
+      customInstructions: '',
+      callHours: {
+        start: '14:00',
+        end: '18:00',
+        timezone: 'UTC',
+        daysOfWeek: [2, 4]
+      }
     },
     schedule: {
       enabled: true,
       startTime: '14:00',
       endTime: '18:00',
       timezone: 'UTC',
-      daysOfWeek: [2, 4], // Tuesday and Thursday
+      daysOfWeek: [2, 4],
       autoActivate: true
     }
   },
   {
     id: 'agent-5',
-    name: 'Arabic Agent',
-    description: 'Arabic-speaking customer engagement specialist',
+    name: 'Arabic Voice Agent',
+    description: 'Arabic-speaking customer engagement specialist with cultural awareness',
     status: 'inactive',
     createdAt: new Date('2024-01-01'),
-    configuration: {
-      voice: 'realistic',
-      language: 'ar',
+    ownerId: 'admin-1',
+    assignedUsers: [],
+    ec2Status: 'stopped',
+    technicalConfig: {
+      systemPrompt: 'أنت وكيل خدمة عملاء يتحدث العربية. هدفك هو مساعدة العملاء وتقديم الدعم بطريقة مهذبة ومحترمة. كن صبوراً ومتفهماً واحرص على التواصل الفعال.',
+      stt: {
+        provider: 'azure',
+        model: 'ar-latest',
+        settings: {
+          language: 'ar',
+          confidence_threshold: 0.75,
+          silence_timeout: 2000
+        }
+      },
+      llm: {
+        provider: 'openai',
+        model: 'gpt-4-turbo',
+        settings: {
+          temperature: 0.7,
+          max_tokens: 1000,
+          top_p: 0.9,
+          frequency_penalty: 0.0,
+          presence_penalty: 0.0
+        }
+      },
+      tts: {
+        provider: 'azure',
+        voiceId: 'ar-professional-1',
+        settings: {
+          stability: 0.7,
+          similarity_boost: 0.8,
+          speed: 1.0,
+          pitch: 1.0
+        }
+      },
+      callSettings: {
+        max_call_duration: 450,
+        call_timeout: 45,
+        retry_attempts: 3,
+        call_recording: true
+      }
+    },
+    customerConfig: {
+      voiceSpeed: 1.0,
+      leadingMessage: 'السلام عليكم! أتصل بكم لمناقشة فرصة رائعة قد تفيد أعمالكم.',
       personality: 'Respectful and culturally aware',
-      responseTime: 2000,
-      firstMessage: 'السلام عليكم! أتصل بكم لمناقشة فرصة رائعة قد تفيد أعمالكم.'
+      responseDelay: 2000,
+      customInstructions: '',
+      callHours: {
+        start: '09:00',
+        end: '17:00',
+        timezone: 'UTC',
+        daysOfWeek: [0, 1, 2, 3, 4]
+      }
     }
   }
 ]
@@ -120,7 +360,7 @@ export function useConsoleData() {
   const { user } = useAuth()
   const [agents, setAgents] = useState<Agent[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [contacts, setContacts] = useState<Contact[]>([])
+  const [contactLists, setContactLists] = useState<ContactList[]>([])
   const [stats, setStats] = useState<ConsoleStats>({
     totalCalls: 0,
     successRate: 0,
@@ -139,21 +379,24 @@ export function useConsoleData() {
 
     const savedAgents = localStorage.getItem(getUserKey('agents'))
     const savedCampaigns = localStorage.getItem(getUserKey('campaigns'))
-    const savedContacts = localStorage.getItem(getUserKey('contacts'))
+    const savedContactLists = localStorage.getItem(getUserKey('contactLists'))
 
     if (savedAgents) {
       setAgents(JSON.parse(savedAgents))
     } else {
-      // Initialize with predefined agents for new users
-      setAgents(PREDEFINED_AGENTS)
+      // Initialize with predefined agents for new users (filtered by user access)
+      const userAgents = PREDEFINED_AGENTS.filter(agent => 
+        agent.assignedUsers.includes(user.id) || user.role === 'admin'
+      )
+      setAgents(userAgents)
     }
 
     if (savedCampaigns) {
       setCampaigns(JSON.parse(savedCampaigns))
     }
     
-    if (savedContacts) {
-      setContacts(JSON.parse(savedContacts))
+    if (savedContactLists) {
+      setContactLists(JSON.parse(savedContactLists))
     }
   }, [user])
 
@@ -172,53 +415,80 @@ export function useConsoleData() {
 
   useEffect(() => {
     if (!user) return
-    localStorage.setItem(getUserKey('contacts'), JSON.stringify(contacts))
+    localStorage.setItem(getUserKey('contactLists'), JSON.stringify(contactLists))
     updateStats()
-  }, [contacts, user])
+  }, [contactLists, user])
 
   // Update stats based on current data
   const updateStats = useCallback(() => {
     const activeAgents = agents.filter(agent => agent.status === 'active').length
     const activeCampaigns = campaigns.filter(campaign => campaign.status === 'active').length
-    const totalCalls = campaigns.reduce((sum, campaign) => sum + campaign.contactsCalled, 0)
-    const successfulCalls = campaigns.reduce((sum, campaign) => 
-      sum + Math.round(campaign.contactsCalled * (campaign.successRate / 100)), 0
-    )
+    const totalContacts = contactLists.reduce((sum, list) => sum + list.totalContacts, 0)
+    const totalCalls = campaigns.reduce((sum, campaign) => sum + campaign.stats.contactsCalled, 0)
+    const successfulCalls = campaigns.reduce((sum, campaign) => sum + campaign.stats.successfulCalls, 0)
     const successRate = totalCalls > 0 ? Math.round((successfulCalls / totalCalls) * 100) : 0
 
     setStats({
       totalCalls,
       successRate,
-      avgDuration: '0m 0s',
+      avgDuration: '2m 34s', // This would be calculated from call records
       activeCampaigns,
       activeAgents,
-      totalContacts: contacts.length
+      totalContacts
     })
-  }, [agents, campaigns, contacts])
+  }, [agents, campaigns, contactLists])
 
-  // Get available agents based on user subscription
+  // Get available agents based on user subscription and role
   const getAvailableAgents = useCallback(() => {
     if (!user) return []
-    return agents.slice(0, user.subscription.maxAgents)
+    
+    if (user.role === 'admin') {
+      return agents // Admins see all agents
+    }
+    
+    // Regular users only see assigned agents
+    const assignedAgents = agents.filter(agent => 
+      agent.assignedUsers.includes(user.id)
+    )
+    
+    return assignedAgents.slice(0, user.subscription.maxAgents)
   }, [agents, user])
 
-  // Agent operations (update only, no create/delete)
+  // Agent operations (customers can only update customerConfig)
   const updateAgent = useCallback((id: string, updates: Partial<Agent>) => {
-    setAgents(prev => prev.map(agent => 
-      agent.id === id ? { ...agent, ...updates } : agent
-    ))
-  }, [])
+    setAgents(prev => prev.map(agent => {
+      if (agent.id !== id) return agent
+      
+      // Restrict customer updates to customerConfig only
+      if (user?.role !== 'admin' && updates.technicalConfig) {
+        const { technicalConfig, ...allowedUpdates } = updates
+        return { ...agent, ...allowedUpdates, lastUsed: new Date() }
+      }
+      
+      return { ...agent, ...updates, lastUsed: new Date() }
+    }))
+  }, [user])
 
   // Campaign CRUD operations
   const createCampaign = useCallback((campaignData: Omit<Campaign, 'id' | 'createdAt'>) => {
     const newCampaign: Campaign = {
       ...campaignData,
-      id: Date.now().toString(),
+      id: `campaign-${Date.now()}`,
+      userId: user!.id,
+      stats: {
+        totalContacts: 0,
+        contactsCalled: 0,
+        successfulCalls: 0,
+        failedCalls: 0,
+        pendingCalls: 0,
+        averageCallDuration: 0,
+        successRate: 0
+      },
       createdAt: new Date()
     }
     setCampaigns(prev => [...prev, newCampaign])
     return newCampaign
-  }, [])
+  }, [user])
 
   const updateCampaign = useCallback((id: string, updates: Partial<Campaign>) => {
     setCampaigns(prev => prev.map(campaign => 
@@ -230,21 +500,27 @@ export function useConsoleData() {
     setCampaigns(prev => prev.filter(campaign => campaign.id !== id))
   }, [])
 
-  // Contact operations
-  const addContacts = useCallback((contactList: Omit<Contact, 'id' | 'createdAt'>[]) => {
-    const newContacts: Contact[] = contactList.map(contact => ({
-      ...contact,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date()
-    }))
-    setContacts(prev => [...prev, ...newContacts])
-    return newContacts
+  // Contact List operations
+  const addContactList = useCallback((listData: Omit<ContactList, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newContactList: ContactList = {
+      ...listData,
+      id: `contactlist-${Date.now()}`,
+      userId: user!.id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+    setContactLists(prev => [...prev, newContactList])
+    return newContactList
+  }, [user])
+
+  const updateContactList = useCallback((id: string, updates: Partial<ContactList>) => {
+    setContactLists(prev => prev.map(list => 
+      list.id === id ? { ...list, ...updates, updatedAt: new Date() } : list
+    ))
   }, [])
 
-  // Subscription management - this would typically sync with the auth context
-  const updateSubscription = useCallback((tierId: 'basic' | 'starter' | 'professional' | 'enterprise') => {
-    // In a real app, this would be handled by the auth context and backend
-    console.log('Subscription update would be handled by auth system:', tierId)
+  const deleteContactList = useCallback((id: string) => {
+    setContactLists(prev => prev.filter(list => list.id !== id))
   }, [])
 
   // Check if agent should be active based on schedule
@@ -252,8 +528,8 @@ export function useConsoleData() {
     if (!agent.schedule?.enabled) return false
     
     const now = new Date()
-    const currentTime = now.toTimeString().slice(0, 5) // HH:MM format
-    const currentDay = now.getDay() // 0-6, Sunday = 0
+    const currentTime = now.toTimeString().slice(0, 5)
+    const currentDay = now.getDay()
     
     const isInScheduledDays = agent.schedule.daysOfWeek.includes(currentDay)
     const isInTimeRange = currentTime >= agent.schedule.startTime && currentTime <= agent.schedule.endTime
@@ -277,9 +553,8 @@ export function useConsoleData() {
       }))
     }
 
-    // Check every minute
     const interval = setInterval(checkSchedules, 60000)
-    checkSchedules() // Run immediately
+    checkSchedules()
 
     return () => clearInterval(interval)
   }, [isAgentScheduledActive])
@@ -287,11 +562,11 @@ export function useConsoleData() {
   return {
     // Data
     agents: getAvailableAgents(),
-    campaigns,
-    contacts,
+    campaigns: campaigns.filter(c => c.userId === user?.id), // Filter user's campaigns
+    contactLists: contactLists.filter(cl => cl.userId === user?.id), // Filter user's contact lists
     stats,
     
-    // Agent operations (only update)
+    // Agent operations
     updateAgent,
     
     // Campaign operations
@@ -299,10 +574,9 @@ export function useConsoleData() {
     updateCampaign,
     deleteCampaign,
     
-    // Contact operations
-    addContacts,
-    
-    // Subscription operations
-    updateSubscription
+    // Contact List operations
+    addContactList,
+    updateContactList,
+    deleteContactList
   }
 } 

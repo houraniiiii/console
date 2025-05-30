@@ -25,12 +25,13 @@ const DEFAULT_ADMIN: User = {
   subscription: {
     tierId: 'enterprise',
     tierName: 'Enterprise',
-    maxAgents: 5,
+    maxAgents: 10,
     usedAgents: 0
   },
   isActive: true,
-  createdAt: new Date('2024-01-01'),
-  company: 'Vertirix'
+  createdAt: new Date(),
+  company: 'Vertirix Systems',
+  assignedAgents: [] // Admins can access all agents
 }
 
 // Security configuration
@@ -299,7 +300,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
         isActive: true,
         createdAt: new Date(),
-        company: userData.company
+        company: userData.company,
+        assignedAgents: [] // New users start with no assigned agents
       }
 
       const updatedUsers = [...users, newUser]

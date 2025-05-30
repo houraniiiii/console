@@ -15,11 +15,17 @@ export default function EditAgentPage() {
 
   const [agent, setAgent] = useState<Agent | null>(null)
   const [formData, setFormData] = useState({
-    voice: '' as Agent['configuration']['voice'],
-    language: '' as Agent['configuration']['language'],
+    voiceSpeed: 1.0,
+    leadingMessage: '',
     personality: '',
-    responseTime: 2000,
-    firstMessage: ''
+    responseDelay: 1000,
+    customInstructions: '',
+    callHours: {
+      start: '09:00',
+      end: '17:00',
+      timezone: 'UTC',
+      daysOfWeek: [1, 2, 3, 4, 5]
+    }
   })
   const [scheduleData, setScheduleData] = useState({
     enabled: false,
@@ -35,7 +41,7 @@ export default function EditAgentPage() {
     const foundAgent = agents.find(a => a.id === agentId)
     if (foundAgent) {
       setAgent(foundAgent)
-      setFormData(foundAgent.configuration)
+      setFormData(foundAgent.customerConfig)
       if (foundAgent.schedule) {
         setScheduleData(foundAgent.schedule)
       }
@@ -49,8 +55,8 @@ export default function EditAgentPage() {
     if (!agent) return
 
     // Validate form
-    if (!formData.firstMessage.trim()) {
-      toast.error('First message is required')
+    if (!formData.leadingMessage.trim()) {
+      toast.error('Leading message is required')
       return
     }
     
@@ -62,9 +68,9 @@ export default function EditAgentPage() {
     setIsSaving(true)
     
     try {
-      // Update agent configuration
+      // Update agent customer configuration
       await updateAgent(agentId, { 
-        configuration: formData,
+        customerConfig: formData,
         schedule: scheduleData,
         lastUsed: new Date()
       })
@@ -92,29 +98,21 @@ export default function EditAgentPage() {
     return days[day]
   }
 
-  const getVoiceTypeDisplay = (voice: Agent['configuration']['voice']) => {
-    switch (voice) {
-      case 'hyper-realistic': return 'Hyper Realistic'
-      case 'realistic': return 'Realistic'
-      case 'custom': return 'Custom'
-      case 'professional': return 'Professional'
-      case 'standard': return 'Standard'
-      default: return voice
-    }
+  const getVoiceTypeDisplay = (speed: number) => {
+    if (speed <= 0.7) return 'Slow & Clear'
+    if (speed <= 1.0) return 'Normal Speed'
+    if (speed <= 1.2) return 'Fast & Efficient'
+    return 'Very Fast'
   }
 
-  const getVoiceDescription = (voice: Agent['configuration']['voice']) => {
-    switch (voice) {
-      case 'hyper-realistic': return 'Most natural and human-like voice with advanced prosody'
-      case 'realistic': return 'Natural-sounding voice with good intonation'
-      case 'custom': return 'Customizable voice with specific characteristics'
-      case 'professional': return 'Clear, business-appropriate voice'
-      case 'standard': return 'Basic synthetic voice, resource-efficient'
-      default: return ''
-    }
+  const getVoiceDescription = (speed: number) => {
+    if (speed <= 0.7) return 'Slow and clear delivery for better comprehension'
+    if (speed <= 1.0) return 'Normal speaking pace for natural conversation'
+    if (speed <= 1.2) return 'Fast-paced delivery for efficient communication'
+    return 'Very fast delivery for quick interactions'
   }
 
-  const isFormValid = formData.firstMessage.trim() && formData.personality.trim()
+  const isFormValid = formData.leadingMessage.trim() && formData.personality.trim()
 
   if (!agent) {
     return (
@@ -190,74 +188,74 @@ export default function EditAgentPage() {
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Voice Type */}
+            {/* Voice Speed */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center">
                 <Volume2 className="w-4 h-4 mr-1" />
-                Voice Type
+                Voice Speed
               </label>
               <select
-                value={formData.voice}
+                value={formData.voiceSpeed}
                 onChange={(e) => setFormData({ 
                   ...formData, 
-                  voice: e.target.value as Agent['configuration']['voice']
+                  voiceSpeed: parseFloat(e.target.value)
                 })}
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
               >
-                <option value="hyper-realistic">Hyper Realistic</option>
-                <option value="realistic">Realistic</option>
-                <option value="custom">Custom</option>
-                <option value="professional">Professional</option>
-                <option value="standard">Standard</option>
+                <option value="0.5">0.5x - Very Slow</option>
+                <option value="0.7">0.7x - Slow</option>
+                <option value="1.0">1.0x - Normal</option>
+                <option value="1.2">1.2x - Fast</option>
+                <option value="1.5">1.5x - Very Fast</option>
+                <option value="2.0">2.0x - Maximum</option>
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                {getVoiceDescription(formData.voice)}
+                Adjust the speaking speed of your voice agent
               </p>
             </div>
 
-            {/* Language */}
+            {/* Custom Instructions */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center">
                 <Globe className="w-4 h-4 mr-1" />
-                Language
+                Custom Instructions
               </label>
-              <select
-                value={formData.language}
+              <textarea
+                value={formData.customInstructions}
                 onChange={(e) => setFormData({ 
                   ...formData, 
-                  language: e.target.value as Agent['configuration']['language']
+                  customInstructions: e.target.value
                 })}
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-              >
-                <option value="en-US">English (US)</option>
-                <option value="ar">Arabic</option>
-              </select>
+                rows={3}
+                placeholder="Add any specific instructions for this agent..."
+              />
               <p className="text-xs text-gray-500 mt-1">
-                Primary language for voice interactions
+                Additional guidance for the agent's behavior
               </p>
             </div>
 
-            {/* Response Time */}
+            {/* Response Delay */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center">
                 <Clock className="w-4 h-4 mr-1" />
-                Response Time (ms)
+                Response Delay (ms)
               </label>
               <input
                 type="number"
-                min="1000"
+                min="500"
                 max="5000"
                 step="100"
-                value={formData.responseTime}
+                value={formData.responseDelay}
                 onChange={(e) => setFormData({ 
                   ...formData, 
-                  responseTime: parseInt(e.target.value) || 2000
+                  responseDelay: parseInt(e.target.value) || 1000
                 })}
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
               />
               <p className="text-xs text-gray-500 mt-1">
-                {formData.responseTime < 1500 ? 'Very fast response' :
-                 formData.responseTime < 2500 ? 'Normal response time' : 'Thoughtful response'}
+                {formData.responseDelay < 1500 ? 'Very fast response' :
+                 formData.responseDelay < 2500 ? 'Normal response time' : 'Thoughtful response'}
               </p>
             </div>
 
@@ -289,10 +287,10 @@ export default function EditAgentPage() {
               Initial Message (Intro)
             </label>
             <textarea
-              value={formData.firstMessage}
+              value={formData.leadingMessage}
               onChange={(e) => setFormData({ 
                 ...formData, 
-                firstMessage: e.target.value
+                leadingMessage: e.target.value
               })}
               className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
               rows={4}
@@ -303,9 +301,9 @@ export default function EditAgentPage() {
                 This is the first thing callers will hear from this agent
               </p>
               <span className={`text-xs ${
-                formData.firstMessage.length > 200 ? 'text-yellow-400' : 'text-gray-500'
+                formData.leadingMessage.length > 200 ? 'text-yellow-400' : 'text-gray-500'
               }`}>
-                {formData.firstMessage.length}/300
+                {formData.leadingMessage.length}/300
               </span>
             </div>
           </div>
@@ -425,17 +423,17 @@ export default function EditAgentPage() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Voice Type:</span>
-                  <span className="text-white font-medium">{getVoiceTypeDisplay(formData.voice)}</span>
+                  <span className="text-white font-medium">{getVoiceTypeDisplay(formData.voiceSpeed)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Language:</span>
-                  <span className="text-white">{formData.language === 'en-US' ? 'English (US)' : 'Arabic'}</span>
+                  <span className="text-white">{formData.customInstructions === 'en-US' ? 'English (US)' : 'Arabic'}</span>
                 </div>
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Response Time:</span>
-                  <span className="text-white">{formData.responseTime}ms</span>
+                  <span className="text-white">{formData.responseDelay}ms</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Personality:</span>
@@ -493,7 +491,7 @@ export default function EditAgentPage() {
               <p className="text-gray-500 mb-2">First Message Preview:</p>
               <div className="p-4 bg-gray-800 rounded-lg border-l-4 border-purple-500">
                 <p className="text-white text-sm leading-relaxed">
-                  {formData.firstMessage || 'No message set'}
+                  {formData.leadingMessage || 'No message set'}
                 </p>
               </div>
             </div>

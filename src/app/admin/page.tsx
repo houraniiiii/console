@@ -1,95 +1,164 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
+import { Agent, User, CreateUserRequest } from '@/types'
 import { 
-  Users, 
   Plus, 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2, 
-  Crown, 
-  Calendar,
-  Building,
-  Mail,
-  Shield,
-  MoreVertical,
-  LogOut,
-  Home,
-  Settings,
-  ArrowLeft,
+  Users, 
+  Bot, 
+  Settings, 
+  ArrowLeft, 
+  Server, 
+  Database, 
+  Mic, 
+  MessageSquare,
+  Crown,
   Eye,
   EyeOff
 } from 'lucide-react'
-import { User, CreateUserRequest } from '@/types'
 import toast from 'react-hot-toast'
 import SecurityMonitor from '@/components/SecurityMonitor'
 
 export default function AdminPage() {
-  const { user, isAuthenticated, isLoading, getAllUsers, createUser, updateUser, deleteUser, logout } = useAuth()
   const router = useRouter()
-  
+  const { user, logout } = useAuth()
+  const [isLoading, setIsLoading] = useState(false)
   const [users, setUsers] = useState<User[]>([])
+  const [agents, setAgents] = useState<Agent[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'user'>('all')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [activeTab, setActiveTab] = useState<'users' | 'agents' | 'create-agent'>('users')
+
+  // Create Agent Form State
+  const [agentForm, setAgentForm] = useState({
+    name: '',
+    description: '',
+    systemPrompt: '',
+    stt: {
+      provider: 'whisper' as const,
+      model: 'whisper-1',
+      settings: {
+        language: 'en-US',
+        confidence_threshold: 0.7,
+        silence_timeout: 2000
+      }
+    },
+    llm: {
+      provider: 'openai' as const,
+      model: 'gpt-4-turbo',
+      settings: {
+        temperature: 0.7,
+        max_tokens: 1000,
+        top_p: 1.0,
+        frequency_penalty: 0.0,
+        presence_penalty: 0.0
+      }
+    },
+    tts: {
+      provider: 'elevenlabs' as const,
+      voiceId: '',
+      settings: {
+        stability: 0.5,
+        similarity_boost: 0.8,
+        speed: 1.0,
+        pitch: 1.0
+      }
+    },
+    callSettings: {
+      max_call_duration: 300,
+      call_timeout: 30,
+      retry_attempts: 3,
+      call_recording: true
+    },
+    customerConfig: {
+      voiceSpeed: 1.0,
+      leadingMessage: '',
+      personality: '',
+      responseDelay: 1000,
+      customInstructions: '',
+      callHours: {
+        start: '09:00',
+        end: '17:00',
+        timezone: 'UTC',
+        daysOfWeek: [1, 2, 3, 4, 5]
+      }
+    }
+  })
 
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || user?.role !== 'admin')) {
+    if (!user || user.role !== 'admin') {
       router.push('/login')
       return
     }
-    
-    if (user?.role === 'admin') {
-      refreshUsers()
-    }
-  }, [isAuthenticated, user, isLoading, router])
+    loadData()
+  }, [user, router])
 
-  const refreshUsers = () => {
-    const allUsers = getAllUsers()
-    setUsers(allUsers)
+  const loadData = async () => {
+    // Load users and agents from localStorage or API
+    const savedUsers = localStorage.getItem('admin-users')
+    const savedAgents = localStorage.getItem('admin-agents')
+    
+    if (savedUsers) setUsers(JSON.parse(savedUsers))
+    if (savedAgents) setAgents(JSON.parse(savedAgents))
   }
 
-  const filteredUsers = users.filter(u => {
-    const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (u.company?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
-    
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' && u.isActive) ||
-                         (statusFilter === 'inactive' && !u.isActive)
-    
-    const matchesRole = roleFilter === 'all' || u.role === roleFilter
-    
-    return matchesSearch && matchesStatus && matchesRole
-  })
-
-  const handleCreateUser = async (userData: CreateUserRequest) => {
-    const success = await createUser(userData)
-    if (success) {
-      refreshUsers()
-      setShowCreateModal(false)
+  const handleCreateAgent = async () => {
+    if (!agentForm.name.trim() || !agentForm.description.trim() || !agentForm.systemPrompt.trim()) {
+      toast.error('Please fill in all required fields')
+      return
     }
-  }
 
-  const handleUpdateUser = async (userId: string, updates: Partial<User>) => {
-    const success = await updateUser(userId, updates)
-    if (success) {
-      refreshUsers()
-      setEditingUser(null)
-    }
-  }
-
-  const handleDeleteUser = async (userId: string) => {
-    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      const success = await deleteUser(userId)
-      if (success) {
-        refreshUsers()
+    setIsLoading(true)
+    try {
+      const newAgent: Agent = {
+        id: `agent-${Date.now()}`,
+        name: agentForm.name,
+        description: agentForm.description,
+        status: 'provisioning',
+        createdAt: new Date(),
+        ownerId: user!.id,
+        assignedUsers: [],
+        ec2Status: 'pending',
+        technicalConfig: {
+          systemPrompt: agentForm.systemPrompt,
+          stt: agentForm.stt,
+          llm: agentForm.llm,
+          tts: agentForm.tts,
+          callSettings: agentForm.callSettings
+        },
+        customerConfig: agentForm.customerConfig
       }
+
+      const updatedAgents = [...agents, newAgent]
+      setAgents(updatedAgents)
+      localStorage.setItem('admin-agents', JSON.stringify(updatedAgents))
+      
+      toast.success('Agent created successfully! EC2 instance is being provisioned.')
+      
+      // Reset form
+      setAgentForm(prev => ({
+        ...prev,
+        name: '',
+        description: '',
+        systemPrompt: '',
+        customerConfig: {
+          ...prev.customerConfig,
+          leadingMessage: '',
+          personality: '',
+          customInstructions: ''
+        }
+      }))
+      
+      setActiveTab('agents')
+    } catch (error) {
+      toast.error('Failed to create agent')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -100,20 +169,133 @@ export default function AdminPage() {
     }
   }
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
+  const renderCreateAgentForm = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setActiveTab('agents')}
+            className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-400" />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-white">Create New Agent</h2>
+            <p className="text-gray-400">Configure technical specifications and customer settings</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Basic Information */}
+        <div className="dashboard-card rounded-xl p-6">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <Bot className="w-5 h-5 mr-2 text-blue-400" />
+            Basic Information
+          </h3>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Agent Name *</label>
+              <input
+                type="text"
+                value={agentForm.name}
+                onChange={(e) => setAgentForm({ ...agentForm, name: e.target.value })}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., Sales Agent Pro"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Description *</label>
+              <textarea
+                value={agentForm.description}
+                onChange={(e) => setAgentForm({ ...agentForm, description: e.target.value })}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={3}
+                placeholder="Brief description of the agent's purpose..."
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">System Prompt *</label>
+              <textarea
+                value={agentForm.systemPrompt}
+                onChange={(e) => setAgentForm({ ...agentForm, systemPrompt: e.target.value })}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={5}
+                placeholder="You are a professional sales agent. Your goal is to..."
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* STT Configuration */}
+        <div className="dashboard-card rounded-xl p-6">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <Mic className="w-5 h-5 mr-2 text-green-400" />
+            Speech-to-Text (STT)
+          </h3>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Provider</label>
+              <select
+                value={agentForm.stt.provider}
+                onChange={(e) => setAgentForm({
+                  ...agentForm,
+                  stt: { ...agentForm.stt, provider: e.target.value as any }
+                })}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="whisper">OpenAI Whisper</option>
+                <option value="deepgram">Deepgram</option>
+                <option value="azure">Azure Speech</option>
+                <option value="google">Google Speech</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Model</label>
+              <input
+                type="text"
+                value={agentForm.stt.model}
+                onChange={(e) => setAgentForm({
+                  ...agentForm,
+                  stt: { ...agentForm.stt, model: e.target.value }
+                })}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end space-x-4">
+        <button
+          onClick={() => setActiveTab('agents')}
+          className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleCreateAgent}
+          disabled={isLoading}
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+        >
+          {isLoading ? 'Creating...' : 'Create Agent'}
+        </button>
+      </div>
+    </div>
+  )
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading admin panel...</p>
+          <p className="text-gray-400">Loading admin dashboard...</p>
         </div>
       </div>
     )
@@ -121,645 +303,110 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Admin Header */}
-      <header className="glass-card border-b border-white/10 px-6 py-4">
+      {/* Header */}
+      <header className="bg-gray-850/50 backdrop-blur-sm border-b border-white/10 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">V</span>
-              </div>
-              <h1 className="text-xl font-bold text-white">Vertirix Admin</h1>
+            <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+              <Crown className="w-5 h-5 text-white" />
             </div>
-            
-            {/* Admin Status */}
-            <div className="flex items-center space-x-2">
-              <Shield className="w-4 h-4 text-purple-400" />
-              <span className="text-sm text-gray-400">Administrator Panel</span>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
+              <p className="text-gray-400 text-sm">Manage agents and customers</p>
             </div>
           </div>
-
+          
           <div className="flex items-center space-x-4">
-            {/* Navigation */}
-            <button
-              onClick={() => router.push('/')}
-              className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
-              title="Back to Console"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm">Console</span>
-            </button>
-
-            {/* User Info & Logout */}
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-3 px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
-                <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-medium text-sm">
-                    {user?.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-medium text-white">{user?.name}</p>
-                  <p className="text-xs text-purple-400">Administrator</p>
-                </div>
-              </div>
-              
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                title="Logout"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="text-sm">Logout</span>
-              </button>
+            <div className="flex items-center space-x-2 px-3 py-1 bg-purple-500/20 rounded-lg">
+              <Crown className="w-4 h-4 text-purple-400" />
+              <span className="text-sm text-purple-400">Admin</span>
             </div>
+            
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>
 
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">User Management</h1>
-              <p className="text-gray-400">Manage users and subscription plans</p>
-            </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn-primary px-6 py-3 rounded-lg text-white font-medium flex items-center"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Create User
-            </button>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="dashboard-card rounded-xl p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-sm">Total Users</p>
-                  <p className="text-2xl font-bold text-white">{users.length}</p>
-                </div>
-                <Users className="w-8 h-8 text-purple-500" />
-              </div>
-            </div>
-            <div className="dashboard-card rounded-xl p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-sm">Active Users</p>
-                  <p className="text-2xl font-bold text-white">{users.filter(u => u.isActive).length}</p>
-                </div>
-                <Shield className="w-8 h-8 text-green-400" />
-              </div>
-            </div>
-            <div className="dashboard-card rounded-xl p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-sm">Enterprise Users</p>
-                  <p className="text-2xl font-bold text-white">
-                    {users.filter(u => u.subscription.tierId === 'enterprise').length}
-                  </p>
-                </div>
-                <Crown className="w-8 h-8 text-yellow-400" />
-              </div>
-            </div>
-            <div className="dashboard-card rounded-xl p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-sm">This Month</p>
-                  <p className="text-2xl font-bold text-white">
-                    {users.filter(u => {
-                      const created = new Date(u.createdAt)
-                      const now = new Date()
-                      return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear()
-                    }).length}
-                  </p>
-                </div>
-                <Calendar className="w-8 h-8 text-blue-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="dashboard-card rounded-xl p-6 mb-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search users..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value as any)}
-                  className="px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="all">All Roles</option>
-                  <option value="admin">Admin</option>
-                  <option value="user">User</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Users Table */}
-          <div className="dashboard-card rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-900/50 border-b border-gray-700">
-                  <tr>
-                    <th className="text-left p-4 font-medium text-gray-300">User</th>
-                    <th className="text-left p-4 font-medium text-gray-300">Role</th>
-                    <th className="text-left p-4 font-medium text-gray-300">Plan</th>
-                    <th className="text-left p-4 font-medium text-gray-300">Status</th>
-                    <th className="text-left p-4 font-medium text-gray-300">Created</th>
-                    <th className="text-left p-4 font-medium text-gray-300">Last Login</th>
-                    <th className="text-left p-4 font-medium text-gray-300">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((u) => (
-                    <tr key={u.id} className="border-b border-gray-800 hover:bg-gray-800/30">
-                      <td className="p-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                            <span className="text-white font-medium">
-                              {u.name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-white">{u.name}</p>
-                            <div className="flex items-center space-x-1 text-sm text-gray-400">
-                              <Mail className="w-3 h-3" />
-                              <span>{u.email}</span>
-                            </div>
-                            {u.company && (
-                              <div className="flex items-center space-x-1 text-sm text-gray-500">
-                                <Building className="w-3 h-3" />
-                                <span>{u.company}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <span className={`px-2 py-1 text-xs rounded ${
-                          u.role === 'admin' 
-                            ? 'bg-purple-500/20 text-purple-400' 
-                            : 'bg-blue-500/20 text-blue-400'
-                        }`}>
-                          {u.role === 'admin' ? 'Admin' : 'User'}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center space-x-2">
-                          <Crown className="w-4 h-4 text-yellow-400" />
-                          <span className="text-white">{u.subscription.tierName}</span>
-                          <span className="text-xs text-gray-400">
-                            ({u.subscription.usedAgents}/{u.subscription.maxAgents})
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <span className={`px-2 py-1 text-xs rounded ${
-                          u.isActive 
-                            ? 'bg-green-500/20 text-green-400' 
-                            : 'bg-red-500/20 text-red-400'
-                        }`}>
-                          {u.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="p-4 text-gray-400 text-sm">
-                        {formatDate(u.createdAt)}
-                      </td>
-                      <td className="p-4 text-gray-400 text-sm">
-                        {u.lastLogin ? formatDate(u.lastLogin) : 'Never'}
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => setEditingUser(u)}
-                            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          {u.id !== user?.id && (
-                            <button
-                              onClick={() => handleDeleteUser(u.id)}
-                              className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Create User Modal */}
-      {showCreateModal && (
-        <CreateUserModal
-          onClose={() => setShowCreateModal(false)}
-          onCreate={handleCreateUser}
-        />
-      )}
-
-      {/* Edit User Modal */}
-      {editingUser && (
-        <EditUserModal
-          user={editingUser}
-          onClose={() => setEditingUser(null)}
-          onUpdate={handleUpdateUser}
-        />
-      )}
-      
       {/* Security Monitor for Admins */}
       <SecurityMonitor />
-    </div>
-  )
-}
 
-// Create User Modal Component
-function CreateUserModal({ 
-  onClose, 
-  onCreate 
-}: { 
-  onClose: () => void
-  onCreate: (data: CreateUserRequest) => Promise<void>
-}) {
-  const [formData, setFormData] = useState<CreateUserRequest>({
-    email: '',
-    name: '',
-    password: '',
-    company: '',
-    subscription: {
-      tierId: 'basic',
-      tierName: 'Basic',
-      maxAgents: 1
-    }
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [passwordStrength, setPasswordStrength] = useState<{
-    score: number
-    feedback: string[]
-    isValid: boolean
-  }>({ score: 0, feedback: [], isValid: false })
+      {/* Navigation */}
+      <div className="flex border-b border-gray-700">
+        <button
+          onClick={() => setActiveTab('users')}
+          className={`px-6 py-3 font-medium ${activeTab === 'users' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
+        >
+          <Users className="w-4 h-4 inline mr-2" />
+          Users
+        </button>
+        <button
+          onClick={() => setActiveTab('agents')}
+          className={`px-6 py-3 font-medium ${activeTab === 'agents' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
+        >
+          <Bot className="w-4 h-4 inline mr-2" />
+          Agents
+        </button>
+      </div>
 
-  const tierOptions = [
-    { id: 'basic', name: 'Basic', maxAgents: 1 },
-    { id: 'starter', name: 'Starter', maxAgents: 2 },
-    { id: 'professional', name: 'Professional', maxAgents: 3 },
-    { id: 'enterprise', name: 'Enterprise', maxAgents: 5 }
-  ]
-
-  const validatePasswordStrength = (password: string) => {
-    const feedback: string[] = []
-    let score = 0
-
-    if (password.length >= 8) {
-      score += 1
-    } else {
-      feedback.push('At least 8 characters')
-    }
-
-    if (/[A-Z]/.test(password)) {
-      score += 1
-    } else {
-      feedback.push('One uppercase letter')
-    }
-
-    if (/[a-z]/.test(password)) {
-      score += 1
-    } else {
-      feedback.push('One lowercase letter')
-    }
-
-    if (/[0-9]/.test(password)) {
-      score += 1
-    } else {
-      feedback.push('One number')
-    }
-
-    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      score += 1
-    } else {
-      feedback.push('One special character')
-    }
-
-    const isValid = score >= 5
-    return { score, feedback, isValid }
-  }
-
-  const handlePasswordChange = (password: string) => {
-    setFormData({ ...formData, password })
-    setPasswordStrength(validatePasswordStrength(password))
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!passwordStrength.isValid) {
-      toast.error('Please ensure password meets all requirements')
-      return
-    }
-
-    setIsSubmitting(true)
-    
-    try {
-      await onCreate(formData)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const getStrengthColor = (score: number) => {
-    if (score < 2) return 'bg-red-500'
-    if (score < 4) return 'bg-yellow-500'
-    return 'bg-green-500'
-  }
-
-  const getStrengthText = (score: number) => {
-    if (score < 2) return 'Weak'
-    if (score < 4) return 'Medium'
-    return 'Strong'
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-xl p-6 w-full max-w-md border border-white/10 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-semibold text-white mb-6">Create New User</h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
-            <input
-              type="email"
-              required
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={formData.password}
-                onChange={(e) => handlePasswordChange(e.target.value)}
-                className="w-full px-3 py-2 pr-10 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+      {/* Content */}
+      <div className="p-6">
+        {activeTab === 'create-agent' && renderCreateAgentForm()}
+        {activeTab === 'agents' && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold text-white">Voice Agents</h2>
               <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white"
+                onClick={() => setActiveTab('create-agent')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <Plus className="w-4 h-4 mr-2" />
+                Create Agent
               </button>
             </div>
             
-            {/* Password Strength Indicator */}
-            {formData.password && (
-              <div className="mt-2">
-                <div className="flex items-center space-x-2 mb-1">
-                  <div className="flex-1 h-1 bg-gray-700 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-300 ${getStrengthColor(passwordStrength.score)}`}
-                      style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
-                    />
+            <div className="grid gap-4">
+              {agents.map((agent) => (
+                <div key={agent.id} className="dashboard-card rounded-xl p-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">{agent.name}</h3>
+                      <p className="text-gray-400 mb-2">{agent.description}</p>
+                      <div className="flex items-center space-x-4 text-sm">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          agent.status === 'active' ? 'bg-green-400/20 text-green-400' :
+                          agent.status === 'provisioning' ? 'bg-yellow-400/20 text-yellow-400' :
+                          'bg-gray-500/20 text-gray-400'
+                        }`}>
+                          {agent.status}
+                        </span>
+                        <span className="text-gray-500">
+                          EC2: {agent.ec2Status || 'Unknown'}
+                        </span>
+                        <span className="text-gray-500">
+                          Assigned to: {agent.assignedUsers.length} users
+                        </span>
+                      </div>
+                    </div>
+                    <button className="px-3 py-1 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors">
+                      Configure
+                    </button>
                   </div>
-                  <span className={`text-xs font-medium ${
-                    passwordStrength.score < 2 ? 'text-red-400' :
-                    passwordStrength.score < 4 ? 'text-yellow-400' : 'text-green-400'
-                  }`}>
-                    {getStrengthText(passwordStrength.score)}
-                  </span>
                 </div>
-                
-                {passwordStrength.feedback.length > 0 && (
-                  <div className="text-xs text-gray-400">
-                    <span>Required: </span>
-                    {passwordStrength.feedback.join(', ')}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Company (Optional)</label>
-            <input
-              type="text"
-              value={formData.company}
-              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Subscription Plan</label>
-            <select
-              value={formData.subscription.tierId}
-              onChange={(e) => {
-                const tier = tierOptions.find(t => t.id === e.target.value)!
-                setFormData({
-                  ...formData,
-                  subscription: {
-                    tierId: tier.id,
-                    tierName: tier.name,
-                    maxAgents: tier.maxAgents
-                  }
-                })
-              }}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              {tierOptions.map(tier => (
-                <option key={tier.id} value={tier.id}>
-                  {tier.name} ({tier.maxAgents} agent{tier.maxAgents > 1 ? 's' : ''})
-                </option>
               ))}
-            </select>
+            </div>
           </div>
-          
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || !passwordStrength.isValid}
-              className="btn-primary px-6 py-2 rounded-lg text-white font-medium disabled:opacity-50"
-            >
-              {isSubmitting ? 'Creating...' : 'Create User'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-// Edit User Modal Component
-function EditUserModal({ 
-  user, 
-  onClose, 
-  onUpdate 
-}: { 
-  user: User
-  onClose: () => void
-  onUpdate: (userId: string, updates: Partial<User>) => Promise<void>
-}) {
-  const [formData, setFormData] = useState({
-    name: user.name,
-    company: user.company || '',
-    isActive: user.isActive,
-    subscription: user.subscription
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const tierOptions = [
-    { id: 'basic', name: 'Basic', maxAgents: 1 },
-    { id: 'starter', name: 'Starter', maxAgents: 2 },
-    { id: 'professional', name: 'Professional', maxAgents: 3 },
-    { id: 'enterprise', name: 'Enterprise', maxAgents: 5 }
-  ]
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    
-    try {
-      await onUpdate(user.id, formData)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-xl p-6 w-full max-w-md border border-white/10">
-        <h2 className="text-xl font-semibold text-white mb-6">Edit User</h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
+        )}
+        {activeTab === 'users' && (
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+            <h2 className="text-xl font-bold text-white mb-4">Customer Users</h2>
+            <div className="text-gray-400">User management interface will be implemented here...</div>
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Company</label>
-            <input
-              type="text"
-              value={formData.company}
-              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Subscription Plan</label>
-            <select
-              value={formData.subscription.tierId}
-              onChange={(e) => {
-                const tier = tierOptions.find(t => t.id === e.target.value)!
-                setFormData({
-                  ...formData,
-                  subscription: {
-                    ...formData.subscription,
-                    tierId: tier.id,
-                    tierName: tier.name,
-                    maxAgents: tier.maxAgents
-                  }
-                })
-              }}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              {tierOptions.map(tier => (
-                <option key={tier.id} value={tier.id}>
-                  {tier.name} ({tier.maxAgents} agent{tier.maxAgents > 1 ? 's' : ''})
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="isActive"
-              checked={formData.isActive}
-              onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-              className="rounded border-gray-700 text-primary focus:ring-primary"
-            />
-            <label htmlFor="isActive" className="ml-2 text-sm text-gray-300">
-              Account is active
-            </label>
-          </div>
-          
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-primary px-6 py-2 rounded-lg text-white font-medium disabled:opacity-50"
-            >
-              {isSubmitting ? 'Updating...' : 'Update User'}
-            </button>
-          </div>
-        </form>
+        )}
       </div>
     </div>
   )

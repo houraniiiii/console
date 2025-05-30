@@ -60,7 +60,7 @@ export default function ConsolePage() {
             stats={consoleData.stats}
             subscription={user.subscription}
             createCampaign={consoleData.createCampaign}
-            addContacts={consoleData.addContacts}
+            addContactList={consoleData.addContactList}
           />
         )
       case 'agents':
@@ -69,14 +69,15 @@ export default function ConsolePage() {
             agents={consoleData.agents}
             subscription={user.subscription}
             updateAgent={consoleData.updateAgent}
-            updateSubscription={consoleData.updateSubscription}
           />
         )
       case 'contacts':
         return (
           <ContactsTab
-            contacts={consoleData.contacts}
-            addContacts={consoleData.addContacts}
+            contactLists={consoleData.contactLists}
+            addContactList={consoleData.addContactList}
+            updateContactList={consoleData.updateContactList}
+            deleteContactList={consoleData.deleteContactList}
           />
         )
       case 'campaigns':
@@ -84,6 +85,7 @@ export default function ConsolePage() {
           <CampaignsTab
             campaigns={consoleData.campaigns}
             agents={consoleData.agents}
+            contactLists={consoleData.contactLists}
             createCampaign={consoleData.createCampaign}
             updateCampaign={consoleData.updateCampaign}
             deleteCampaign={consoleData.deleteCampaign}
@@ -99,7 +101,7 @@ export default function ConsolePage() {
             stats={consoleData.stats}
             subscription={user.subscription}
             createCampaign={consoleData.createCampaign}
-            addContacts={consoleData.addContacts}
+            addContactList={consoleData.addContactList}
           />
         )
     }
