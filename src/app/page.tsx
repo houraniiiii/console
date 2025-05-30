@@ -11,10 +11,9 @@ import AgentsTab from '@/components/tabs/AgentsTab'
 import ContactsTab from '@/components/tabs/ContactsTab'
 import CampaignsTab from '@/components/tabs/CampaignsTab'
 import AnalyticsTab from '@/components/tabs/AnalyticsTab'
-import InstanceTab from '@/components/tabs/InstanceTab'
 import SettingsTab from '@/components/tabs/SettingsTab'
 
-export type TabType = 'overview' | 'agents' | 'contacts' | 'campaigns' | 'analytics' | 'instance' | 'settings'
+export type TabType = 'overview' | 'agents' | 'contacts' | 'campaigns' | 'analytics' | 'settings'
 
 export default function ConsolePage() {
   const router = useRouter()
@@ -92,13 +91,6 @@ export default function ConsolePage() {
         )
       case 'analytics':
         return <AnalyticsTab campaigns={consoleData.campaigns} />
-      case 'instance':
-        return (
-          <InstanceTab
-            instanceStatus={consoleData.instanceStatus}
-            toggleInstance={consoleData.toggleInstance}
-          />
-        )
       case 'settings':
         return <SettingsTab />
       default:
@@ -116,7 +108,6 @@ export default function ConsolePage() {
   return (
     <div className="min-h-screen bg-background">
       <Header 
-        instanceRunning={consoleData.instanceStatus.isRunning}
         user={user}
       />
       <div className="flex">

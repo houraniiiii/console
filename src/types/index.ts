@@ -2,7 +2,7 @@ export interface Agent {
   id: string
   name: string
   description: string
-  status: 'active' | 'inactive'
+  status: 'active' | 'inactive' | 'scheduled'
   createdAt: Date
   lastUsed?: Date
   configuration: {
@@ -11,6 +11,14 @@ export interface Agent {
     personality: string
     responseTime: number
     firstMessage: string
+  }
+  schedule?: {
+    enabled: boolean
+    startTime: string // HH:MM format
+    endTime: string   // HH:MM format
+    timezone: string
+    daysOfWeek: number[] // 0-6, Sunday = 0
+    autoActivate: boolean
   }
 }
 
@@ -46,14 +54,6 @@ export interface ConsoleStats {
   activeCampaigns: number
   activeAgents: number
   totalContacts: number
-}
-
-export interface InstanceStatus {
-  isRunning: boolean
-  uptime: string
-  todayCost: number
-  monthlyProjection: number
-  lastStopped?: Date
 }
 
 export interface SubscriptionTier {

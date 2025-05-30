@@ -5,7 +5,8 @@ import {
   Megaphone, 
   TrendingUp, 
   Server, 
-  Settings 
+  Settings,
+  Phone
 } from 'lucide-react'
 import { TabType } from '@/app/page'
 
@@ -18,9 +19,8 @@ const navigationItems = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
   { id: 'agents', label: 'Agents', icon: Bot },
   { id: 'contacts', label: 'Contacts', icon: Users },
-  { id: 'campaigns', label: 'Campaigns', icon: Megaphone },
+  { id: 'campaigns', label: 'Campaigns', icon: Phone },
   { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-  { id: 'instance', label: 'Instance', icon: Server },
   { id: 'settings', label: 'Settings', icon: Settings },
 ] as const
 

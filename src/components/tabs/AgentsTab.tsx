@@ -1,4 +1,4 @@
-import { Settings, Crown } from 'lucide-react'
+import { Settings, Crown, Volume2, Globe, MessageSquare, Clock, Edit, Calendar } from 'lucide-react'
 import { Agent, UserSubscription } from '@/types'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
@@ -52,8 +52,55 @@ export default function AgentsTab({ agents, subscription, updateAgent }: AgentsT
     }
   }
 
+  const getVoiceTypeColor = (voice: Agent['configuration']['voice']) => {
+    switch (voice) {
+      case 'hyper-realistic': return 'bg-purple-500/20 text-purple-400'
+      case 'realistic': return 'bg-blue-500/20 text-blue-400'
+      case 'custom': return 'bg-orange-500/20 text-orange-400'
+      case 'professional': return 'bg-green-500/20 text-green-400'
+      case 'standard': return 'bg-gray-500/20 text-gray-400'
+      default: return 'bg-gray-500/20 text-gray-400'
+    }
+  }
+
   const getLanguageDisplay = (language: Agent['configuration']['language']) => {
     return language === 'en-US' ? 'English (US)' : 'Arabic'
+  }
+
+  const getResponseTimeLabel = (responseTime: number) => {
+    if (responseTime < 1500) return 'Very Fast'
+    if (responseTime < 2500) return 'Normal'
+    return 'Thoughtful'
+  }
+
+  const getScheduleStatus = (agent: Agent) => {
+    if (!agent.schedule?.enabled) return null
+    
+    const now = new Date()
+    const currentTime = now.toTimeString().slice(0, 5)
+    const currentDay = now.getDay()
+    
+    const isInScheduledDays = agent.schedule.daysOfWeek.includes(currentDay)
+    const isInTimeRange = currentTime >= agent.schedule.startTime && currentTime <= agent.schedule.endTime
+    
+    if (isInScheduledDays && isInTimeRange) {
+      return { status: 'active', text: 'In Schedule' }
+    } else if (isInScheduledDays) {
+      return { status: 'waiting', text: 'Scheduled Today' }
+    } else {
+      return { status: 'inactive', text: 'Off Schedule' }
+    }
+  }
+
+  const formatSchedule = (schedule: Agent['schedule']) => {
+    if (!schedule?.enabled) return 'Manual only'
+    
+    const days = schedule.daysOfWeek.map(d => {
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+      return dayNames[d]
+    }).join(', ')
+    
+    return `${schedule.startTime}-${schedule.endTime} (${days})`
   }
 
   const activeAgents = agents.filter(a => a.status === 'active').length
@@ -61,7 +108,10 @@ export default function AgentsTab({ agents, subscription, updateAgent }: AgentsT
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Voice Agents</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-white">Voice Agents</h2>
+          <p className="text-gray-400 mt-1">Configure and manage your AI voice agents</p>
+        </div>
         <div className="flex items-center space-x-4">
           <div className="glass-card px-4 py-2 rounded-lg">
             <div className="flex items-center space-x-2">
@@ -76,48 +126,127 @@ export default function AgentsTab({ agents, subscription, updateAgent }: AgentsT
 
       <div className="grid gap-6">
         {agents.map((agent) => (
-          <div key={agent.id} className="dashboard-card rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className={`w-3 h-3 rounded-full ${
+          <div key={agent.id} className="dashboard-card rounded-xl p-6 hover:border-gray-600 transition-all">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start space-x-4 flex-1">
+                <div className={`w-4 h-4 rounded-full mt-1 ${
                   agent.status === 'active' ? 'bg-green-400' : 'bg-gray-500'
                 }`} />
-                <div>
-                  <h3 className="text-lg font-semibold text-white">{agent.name}</h3>
-                  <p className="text-gray-400 text-sm">{agent.description}</p>
-                  <div className="flex items-center space-x-4 mt-2">
-                    <span className="text-xs text-gray-500">
-                      Voice: {getVoiceTypeDisplay(agent.configuration.voice)}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      Language: {getLanguageDisplay(agent.configuration.language)}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      Last used: {formatLastUsed(agent.lastUsed)}
+                
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <h3 className="text-lg font-semibold text-white">{agent.name}</h3>
+                    <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                      agent.status === 'active' 
+                        ? 'bg-green-400/20 text-green-400' 
+                        : 'bg-gray-500/20 text-gray-400'
+                    }`}>
+                      {agent.status === 'active' ? 'Active' : 'Inactive'}
                     </span>
                   </div>
-                  <div className="mt-2">
-                    <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">
-                      First Message: {agent.configuration.firstMessage.substring(0, 50)}...
-                    </span>
+                  
+                  <p className="text-gray-400 text-sm mb-4">{agent.description}</p>
+
+                  {/* Voice Configuration Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    {/* Voice Type */}
+                    <div className="flex items-center space-x-2">
+                      <Volume2 className="w-4 h-4 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Voice</p>
+                        <span className={`text-xs px-2 py-1 rounded font-medium ${getVoiceTypeColor(agent.configuration.voice)}`}>
+                          {getVoiceTypeDisplay(agent.configuration.voice)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Language */}
+                    <div className="flex items-center space-x-2">
+                      <Globe className="w-4 h-4 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Language</p>
+                        <p className="text-sm text-gray-300">{getLanguageDisplay(agent.configuration.language)}</p>
+                      </div>
+                    </div>
+
+                    {/* Response Time */}
+                    <div className="flex items-center space-x-2">
+                      <Clock className="w-4 h-4 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Response</p>
+                        <p className="text-sm text-gray-300">
+                          {getResponseTimeLabel(agent.configuration.responseTime)} ({agent.configuration.responseTime}ms)
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Schedule Status */}
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Schedule</p>
+                        <div className="flex items-center space-x-2">
+                          <p className="text-sm text-gray-300">{formatSchedule(agent.schedule)}</p>
+                          {agent.schedule?.enabled && (
+                            <span className={`w-2 h-2 rounded-full ${
+                              getScheduleStatus(agent)?.status === 'active' ? 'bg-green-400' :
+                              getScheduleStatus(agent)?.status === 'waiting' ? 'bg-yellow-400' : 'bg-gray-500'
+                            }`} />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Enhanced Status Information */}
+                  <div className="bg-gray-900/50 rounded-lg p-4 mb-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Personality</p>
+                        <p className="text-sm text-gray-300">{agent.configuration.personality}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                          <MessageSquare className="w-3 h-3 mr-1" />
+                          First Message
+                        </p>
+                        <p className="text-sm text-gray-300 line-clamp-2">
+                          "{agent.configuration.firstMessage.substring(0, 80)}
+                          {agent.configuration.firstMessage.length > 80 ? '...' : ''}"
+                        </p>
+                      </div>
+                      {agent.schedule?.enabled && (
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                            <Calendar className="w-3 h-3 mr-1" />
+                            Next Activation
+                          </p>
+                          <p className="text-sm text-gray-300">
+                            {getScheduleStatus(agent)?.text || 'No schedule'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
+
+              {/* Action Buttons */}
+              <div className="flex items-center space-x-2 ml-4">
                 <Link
                   href={`/agents/${agent.id}/edit`}
-                  className="btn-secondary text-sm px-4 py-2 flex items-center no-underline"
+                  className="btn-secondary text-sm px-4 py-2 flex items-center no-underline hover:bg-gray-700/50 transition-colors"
                 >
-                  <Settings className="w-3 h-3 mr-1" />
+                  <Edit className="w-4 h-4 mr-2" />
                   Edit Agent
                 </Link>
                 <button 
                   onClick={() => handleToggleStatus(agent)}
-                  className={`text-sm px-4 py-2 rounded-lg ${
+                  className={`text-sm px-4 py-2 rounded-lg font-medium transition-colors ${
                     agent.status === 'active' 
                       ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' 
                       : 'bg-green-400/20 text-green-400 hover:bg-green-400/30'
-                  } transition-colors`}
+                  }`}
                 >
                   {agent.status === 'active' ? 'Deactivate' : 'Activate'}
                 </button>
@@ -135,7 +264,7 @@ export default function AgentsTab({ agents, subscription, updateAgent }: AgentsT
               Unlock More Agents
             </h3>
             <p className="text-gray-400 mb-4">
-              Contact your administrator to upgrade your subscription plan
+              Contact your administrator to upgrade your subscription plan and access more voice agents
             </p>
             <div className="flex justify-center">
               <div className="px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg">
@@ -144,6 +273,20 @@ export default function AgentsTab({ agents, subscription, updateAgent }: AgentsT
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {agents.length === 0 && (
+        <div className="dashboard-card rounded-xl p-6">
+          <div className="text-center py-12">
+            <Volume2 className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-white mb-2">
+              No Voice Agents Available
+            </h3>
+            <p className="text-gray-400 mb-4">
+              No voice agents are configured for your account. Contact your administrator for access.
+            </p>
           </div>
         </div>
       )}

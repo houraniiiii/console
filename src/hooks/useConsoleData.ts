@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Agent, Campaign, Contact, ConsoleStats, InstanceStatus, UserSubscription } from '@/types'
+import { Agent, Campaign, Contact, ConsoleStats, UserSubscription } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
 
 // Predefined agents available based on subscription
@@ -16,6 +16,14 @@ const PREDEFINED_AGENTS: Agent[] = [
       personality: 'Professional and persuasive',
       responseTime: 2000,
       firstMessage: 'Hello! I\'m calling to discuss an exciting opportunity that could benefit your business.'
+    },
+    schedule: {
+      enabled: true,
+      startTime: '09:00',
+      endTime: '17:00',
+      timezone: 'UTC',
+      daysOfWeek: [1, 2, 3, 4, 5], // Monday to Friday
+      autoActivate: true
     }
   },
   {
@@ -30,6 +38,14 @@ const PREDEFINED_AGENTS: Agent[] = [
       personality: 'Helpful and patient',
       responseTime: 1500,
       firstMessage: 'Hi there! I\'m here to help you with any questions or concerns you might have.'
+    },
+    schedule: {
+      enabled: true,
+      startTime: '08:00',
+      endTime: '20:00',
+      timezone: 'UTC',
+      daysOfWeek: [0, 1, 2, 3, 4, 5, 6], // All days
+      autoActivate: true
     }
   },
   {
@@ -44,6 +60,14 @@ const PREDEFINED_AGENTS: Agent[] = [
       personality: 'Engaging and inquisitive',
       responseTime: 1800,
       firstMessage: 'Good day! I\'d like to learn more about your business needs and see how we can help.'
+    },
+    schedule: {
+      enabled: false,
+      startTime: '10:00',
+      endTime: '16:00',
+      timezone: 'UTC',
+      daysOfWeek: [1, 2, 3, 4, 5],
+      autoActivate: false
     }
   },
   {
@@ -58,6 +82,14 @@ const PREDEFINED_AGENTS: Agent[] = [
       personality: 'Friendly and persistent',
       responseTime: 2200,
       firstMessage: 'Hello! I\'m following up on our previous conversation to see how things are going.'
+    },
+    schedule: {
+      enabled: true,
+      startTime: '14:00',
+      endTime: '18:00',
+      timezone: 'UTC',
+      daysOfWeek: [2, 4], // Tuesday and Thursday
+      autoActivate: true
     }
   },
   {
@@ -97,12 +129,6 @@ export function useConsoleData() {
     activeAgents: 0,
     totalContacts: 0
   })
-  const [instanceStatus, setInstanceStatus] = useState<InstanceStatus>({
-    isRunning: false,
-    uptime: '0m',
-    todayCost: 0,
-    monthlyProjection: 0
-  })
 
   // Get user-specific storage keys
   const getUserKey = (key: string) => user ? `vertirix-${key}-${user.id}` : `vertirix-${key}`
@@ -114,7 +140,6 @@ export function useConsoleData() {
     const savedAgents = localStorage.getItem(getUserKey('agents'))
     const savedCampaigns = localStorage.getItem(getUserKey('campaigns'))
     const savedContacts = localStorage.getItem(getUserKey('contacts'))
-    const savedInstance = localStorage.getItem(getUserKey('instance'))
 
     if (savedAgents) {
       setAgents(JSON.parse(savedAgents))
@@ -129,10 +154,6 @@ export function useConsoleData() {
     
     if (savedContacts) {
       setContacts(JSON.parse(savedContacts))
-    }
-    
-    if (savedInstance) {
-      setInstanceStatus(JSON.parse(savedInstance))
     }
   }, [user])
 
@@ -154,11 +175,6 @@ export function useConsoleData() {
     localStorage.setItem(getUserKey('contacts'), JSON.stringify(contacts))
     updateStats()
   }, [contacts, user])
-
-  useEffect(() => {
-    if (!user) return
-    localStorage.setItem(getUserKey('instance'), JSON.stringify(instanceStatus))
-  }, [instanceStatus, user])
 
   // Update stats based on current data
   const updateStats = useCallback(() => {
@@ -225,20 +241,48 @@ export function useConsoleData() {
     return newContacts
   }, [])
 
-  // Instance control
-  const toggleInstance = useCallback(() => {
-    setInstanceStatus(prev => ({
-      ...prev,
-      isRunning: !prev.isRunning,
-      lastStopped: !prev.isRunning ? undefined : new Date()
-    }))
-  }, [])
-
   // Subscription management - this would typically sync with the auth context
   const updateSubscription = useCallback((tierId: 'basic' | 'starter' | 'professional' | 'enterprise') => {
     // In a real app, this would be handled by the auth context and backend
     console.log('Subscription update would be handled by auth system:', tierId)
   }, [])
+
+  // Check if agent should be active based on schedule
+  const isAgentScheduledActive = useCallback((agent: Agent) => {
+    if (!agent.schedule?.enabled) return false
+    
+    const now = new Date()
+    const currentTime = now.toTimeString().slice(0, 5) // HH:MM format
+    const currentDay = now.getDay() // 0-6, Sunday = 0
+    
+    const isInScheduledDays = agent.schedule.daysOfWeek.includes(currentDay)
+    const isInTimeRange = currentTime >= agent.schedule.startTime && currentTime <= agent.schedule.endTime
+    
+    return isInScheduledDays && isInTimeRange
+  }, [])
+
+  // Auto-activate agents based on schedule
+  useEffect(() => {
+    const checkSchedules = () => {
+      setAgents(prev => prev.map(agent => {
+        if (agent.schedule?.enabled && agent.schedule.autoActivate) {
+          const shouldBeActive = isAgentScheduledActive(agent)
+          if (shouldBeActive && agent.status === 'scheduled') {
+            return { ...agent, status: 'active' as const }
+          } else if (!shouldBeActive && agent.status === 'active' && agent.schedule) {
+            return { ...agent, status: 'scheduled' as const }
+          }
+        }
+        return agent
+      }))
+    }
+
+    // Check every minute
+    const interval = setInterval(checkSchedules, 60000)
+    checkSchedules() // Run immediately
+
+    return () => clearInterval(interval)
+  }, [isAgentScheduledActive])
 
   return {
     // Data
@@ -246,7 +290,6 @@ export function useConsoleData() {
     campaigns,
     contacts,
     stats,
-    instanceStatus,
     
     // Agent operations (only update)
     updateAgent,
@@ -258,9 +301,6 @@ export function useConsoleData() {
     
     // Contact operations
     addContacts,
-    
-    // Instance operations
-    toggleInstance,
     
     // Subscription operations
     updateSubscription
