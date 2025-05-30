@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { Eye, EyeOff, Lock, Mail, LogIn, Shield } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, LogIn, Shield, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function LoginPage() {
@@ -16,6 +16,7 @@ export default function LoginPage() {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState<{email?: string; password?: string}>({})
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -23,11 +24,29 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, router])
 
+  const validateForm = () => {
+    const newErrors: {email?: string; password?: string} = {}
+    
+    if (!formData.email) {
+      newErrors.email = 'Email is required'
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address'
+    }
+    
+    if (!formData.password) {
+      newErrors.password = 'Password is required'
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters'
+    }
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.email || !formData.password) {
-      toast.error('Please fill in all fields')
+    if (!validateForm()) {
       return
     }
 
@@ -49,6 +68,16 @@ export default function LoginPage() {
         email: 'admin@vertirix.com',
         password: 'admin123'
       })
+      setErrors({})
+    }
+  }
+
+  const handleInputChange = (field: 'email' | 'password', value: string) => {
+    setFormData({ ...formData, [field]: value })
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: undefined })
     }
   }
 
@@ -77,6 +106,19 @@ export default function LoginPage() {
           <p className="text-gray-400">Sign in to your voice agent console</p>
         </div>
 
+        {/* Security Notice */}
+        <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+          <div className="flex items-start space-x-3">
+            <Shield className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm text-blue-300 font-medium">Secure Login</p>
+              <p className="text-xs text-blue-400/80">
+                Protected by enterprise-grade security. Maximum 5 login attempts before temporary lockout.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Login Form */}
         <div className="glass-card rounded-2xl p-8 border border-white/10">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -93,11 +135,19 @@ export default function LoginPage() {
                   type="email"
                   required
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  className={`w-full pl-10 pr-4 py-3 bg-gray-800/50 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${
+                    errors.email ? 'border-red-500' : 'border-gray-700'
+                  }`}
                   placeholder="Enter your email"
                 />
               </div>
+              {errors.email && (
+                <div className="flex items-center space-x-1 mt-1">
+                  <AlertTriangle className="w-3 h-3 text-red-400" />
+                  <p className="text-xs text-red-400">{errors.email}</p>
+                </div>
+              )}
             </div>
 
             {/* Password Field */}
@@ -113,8 +163,10 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full pl-10 pr-12 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  className={`w-full pl-10 pr-12 py-3 bg-gray-800/50 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${
+                    errors.password ? 'border-red-500' : 'border-gray-700'
+                  }`}
                   placeholder="Enter your password"
                 />
                 <button
@@ -125,6 +177,12 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+              {errors.password && (
+                <div className="flex items-center space-x-1 mt-1">
+                  <AlertTriangle className="w-3 h-3 text-red-400" />
+                  <p className="text-xs text-red-400">{errors.password}</p>
+                </div>
+              )}
             </div>
 
             {/* Submit Button */}
@@ -170,7 +228,7 @@ export default function LoginPage() {
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-xs text-gray-500">
-            Protected by enterprise-grade security
+            Protected by enterprise-grade security with rate limiting and session management
           </p>
         </div>
       </div>

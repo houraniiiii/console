@@ -33,14 +33,88 @@ const DEFAULT_ADMIN: User = {
   company: 'Vertirix'
 }
 
+// Security configuration
+const SECURITY_CONFIG = {
+  maxLoginAttempts: 5,
+  lockoutDuration: 15 * 60 * 1000, // 15 minutes
+  sessionDuration: 24 * 60 * 60 * 1000, // 24 hours
+  passwordMinLength: 8,
+  requireSpecialChar: true
+}
+
 // Security utilities
 const generateUserId = () => `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
 const hashPassword = (password: string) => {
   // In production, use proper bcrypt or similar
   return btoa(password + 'vertirix-salt-2024')
 }
+
 const verifyPassword = (password: string, hash: string) => {
   return hashPassword(password) === hash
+}
+
+const validatePasswordStrength = (password: string): string | null => {
+  if (password.length < SECURITY_CONFIG.passwordMinLength) {
+    return `Password must be at least ${SECURITY_CONFIG.passwordMinLength} characters long`
+  }
+  
+  if (SECURITY_CONFIG.requireSpecialChar && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    return 'Password must contain at least one special character'
+  }
+  
+  if (!/[A-Z]/.test(password)) {
+    return 'Password must contain at least one uppercase letter'
+  }
+  
+  if (!/[a-z]/.test(password)) {
+    return 'Password must contain at least one lowercase letter'
+  }
+  
+  if (!/[0-9]/.test(password)) {
+    return 'Password must contain at least one number'
+  }
+  
+  return null
+}
+
+const getLoginAttempts = (): Record<string, { count: number; lastAttempt: number }> => {
+  const stored = localStorage.getItem('vertirix-login-attempts')
+  return stored ? JSON.parse(stored) : {}
+}
+
+const setLoginAttempts = (attempts: Record<string, { count: number; lastAttempt: number }>) => {
+  localStorage.setItem('vertirix-login-attempts', JSON.stringify(attempts))
+}
+
+const isAccountLocked = (email: string): boolean => {
+  const attempts = getLoginAttempts()
+  const userAttempts = attempts[email]
+  
+  if (!userAttempts) return false
+  
+  const isLocked = userAttempts.count >= SECURITY_CONFIG.maxLoginAttempts &&
+                   Date.now() - userAttempts.lastAttempt < SECURITY_CONFIG.lockoutDuration
+  
+  return isLocked
+}
+
+const recordLoginAttempt = (email: string, success: boolean) => {
+  const attempts = getLoginAttempts()
+  
+  if (success) {
+    // Clear attempts on successful login
+    delete attempts[email]
+  } else {
+    // Increment failed attempts
+    if (!attempts[email]) {
+      attempts[email] = { count: 0, lastAttempt: 0 }
+    }
+    attempts[email].count++
+    attempts[email].lastAttempt = Date.now()
+  }
+  
+  setLoginAttempts(attempts)
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -53,7 +127,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Initialize default admin and restore session
     initializeAuth()
+    
+    // Set up session monitoring
+    const sessionInterval = setInterval(checkSessionValidity, 60000) // Check every minute
+    
+    return () => clearInterval(sessionInterval)
   }, [])
+
+  const checkSessionValidity = () => {
+    const sessionToken = localStorage.getItem('vertirix-session')
+    if (sessionToken && authState.isAuthenticated) {
+      try {
+        const sessionData = JSON.parse(sessionToken)
+        if (sessionData.expiresAt <= Date.now()) {
+          toast.error('Session expired. Please login again.')
+          logout()
+        }
+      } catch (error) {
+        console.error('Session validation error:', error)
+        logout()
+      }
+    }
+  }
 
   const initializeAuth = async () => {
     try {
@@ -84,6 +179,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return
         } else {
           localStorage.removeItem('vertirix-session')
+          if (sessionData.expiresAt <= Date.now()) {
+            toast.error('Session expired. Please login again.')
+          }
         }
       }
     } catch (error) {
@@ -106,22 +204,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const createSession = (user: User) => {
     const sessionData = {
       userId: user.id,
-      expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+      expiresAt: Date.now() + SECURITY_CONFIG.sessionDuration
     }
     localStorage.setItem('vertirix-session', JSON.stringify(sessionData))
   }
 
   const login = async (credentials: LoginCredentials): Promise<boolean> => {
     try {
+      // Check if account is locked
+      if (isAccountLocked(credentials.email)) {
+        const lockTimeRemaining = Math.ceil(
+          (SECURITY_CONFIG.lockoutDuration - (Date.now() - getLoginAttempts()[credentials.email]?.lastAttempt)) / 60000
+        )
+        toast.error(`Account locked. Try again in ${lockTimeRemaining} minutes.`)
+        return false
+      }
+
       const users = getStoredUsers()
       const passwords = getStoredPasswords()
       
       const user = users.find(u => u.email === credentials.email && u.isActive)
       
       if (!user || !verifyPassword(credentials.password, passwords[credentials.email])) {
+        recordLoginAttempt(credentials.email, false)
         toast.error('Invalid email or password')
         return false
       }
+
+      // Successful login
+      recordLoginAttempt(credentials.email, true)
 
       // Update last login
       const updatedUsers = users.map(u => 
@@ -158,6 +269,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       if (authState.user?.role !== 'admin') {
         toast.error('Unauthorized: Admin access required')
+        return false
+      }
+
+      // Validate password strength
+      const passwordError = validatePasswordStrength(userData.password)
+      if (passwordError) {
+        toast.error(passwordError)
         return false
       }
 

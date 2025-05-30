@@ -15,13 +15,20 @@ import {
   Building,
   Mail,
   Shield,
-  MoreVertical
+  MoreVertical,
+  LogOut,
+  Home,
+  Settings,
+  ArrowLeft,
+  Eye,
+  EyeOff
 } from 'lucide-react'
 import { User, CreateUserRequest } from '@/types'
 import toast from 'react-hot-toast'
+import SecurityMonitor from '@/components/SecurityMonitor'
 
 export default function AdminPage() {
-  const { user, isAuthenticated, isLoading, getAllUsers, createUser, updateUser, deleteUser } = useAuth()
+  const { user, isAuthenticated, isLoading, getAllUsers, createUser, updateUser, deleteUser, logout } = useAuth()
   const router = useRouter()
   
   const [users, setUsers] = useState<User[]>([])
@@ -86,6 +93,13 @@ export default function AdminPage() {
     }
   }
 
+  const handleLogout = () => {
+    if (confirm('Are you sure you want to logout?')) {
+      logout()
+      router.push('/login')
+    }
+  }
+
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -106,204 +120,262 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
-            <p className="text-gray-400">Manage users and subscription plans</p>
+    <div className="min-h-screen bg-background">
+      {/* Admin Header */}
+      <header className="glass-card border-b border-white/10 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">V</span>
+              </div>
+              <h1 className="text-xl font-bold text-white">Vertirix Admin</h1>
+            </div>
+            
+            {/* Admin Status */}
+            <div className="flex items-center space-x-2">
+              <Shield className="w-4 h-4 text-purple-400" />
+              <span className="text-sm text-gray-400">Administrator Panel</span>
+            </div>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="btn-primary px-6 py-3 rounded-lg text-white font-medium flex items-center"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Create User
-          </button>
-        </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="dashboard-card rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Total Users</p>
-                <p className="text-2xl font-bold text-white">{users.length}</p>
-              </div>
-              <Users className="w-8 h-8 text-purple-500" />
-            </div>
-          </div>
-          <div className="dashboard-card rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Active Users</p>
-                <p className="text-2xl font-bold text-white">{users.filter(u => u.isActive).length}</p>
-              </div>
-              <Shield className="w-8 h-8 text-green-400" />
-            </div>
-          </div>
-          <div className="dashboard-card rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Enterprise Users</p>
-                <p className="text-2xl font-bold text-white">
-                  {users.filter(u => u.subscription.tierId === 'enterprise').length}
-                </p>
-              </div>
-              <Crown className="w-8 h-8 text-yellow-400" />
-            </div>
-          </div>
-          <div className="dashboard-card rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">This Month</p>
-                <p className="text-2xl font-bold text-white">
-                  {users.filter(u => {
-                    const created = new Date(u.createdAt)
-                    const now = new Date()
-                    return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear()
-                  }).length}
-                </p>
-              </div>
-              <Calendar className="w-8 h-8 text-blue-400" />
-            </div>
-          </div>
-        </div>
+          <div className="flex items-center space-x-4">
+            {/* Navigation */}
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
+              title="Back to Console"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm">Console</span>
+            </button>
 
-        {/* Filters */}
-        <div className="dashboard-card rounded-xl p-6 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search users..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+            {/* User Info & Logout */}
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3 px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-medium text-sm">
+                    {user?.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-white">{user?.name}</p>
+                  <p className="text-xs text-purple-400">Administrator</p>
+                </div>
               </div>
-            </div>
-            <div className="flex gap-4">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+              
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                title="Logout"
               >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value as any)}
-                className="px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="all">All Roles</option>
-                <option value="admin">Admin</option>
-                <option value="user">User</option>
-              </select>
+                <LogOut className="w-4 h-4" />
+                <span className="text-sm">Logout</span>
+              </button>
             </div>
           </div>
         </div>
+      </header>
 
-        {/* Users Table */}
-        <div className="dashboard-card rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-900/50 border-b border-gray-700">
-                <tr>
-                  <th className="text-left p-4 font-medium text-gray-300">User</th>
-                  <th className="text-left p-4 font-medium text-gray-300">Role</th>
-                  <th className="text-left p-4 font-medium text-gray-300">Plan</th>
-                  <th className="text-left p-4 font-medium text-gray-300">Status</th>
-                  <th className="text-left p-4 font-medium text-gray-300">Created</th>
-                  <th className="text-left p-4 font-medium text-gray-300">Last Login</th>
-                  <th className="text-left p-4 font-medium text-gray-300">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((u) => (
-                  <tr key={u.id} className="border-b border-gray-800 hover:bg-gray-800/30">
-                    <td className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                          <span className="text-white font-medium">
-                            {u.name.charAt(0).toUpperCase()}
+      <div className="p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">User Management</h1>
+              <p className="text-gray-400">Manage users and subscription plans</p>
+            </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="btn-primary px-6 py-3 rounded-lg text-white font-medium flex items-center"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Create User
+            </button>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="dashboard-card rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">Total Users</p>
+                  <p className="text-2xl font-bold text-white">{users.length}</p>
+                </div>
+                <Users className="w-8 h-8 text-purple-500" />
+              </div>
+            </div>
+            <div className="dashboard-card rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">Active Users</p>
+                  <p className="text-2xl font-bold text-white">{users.filter(u => u.isActive).length}</p>
+                </div>
+                <Shield className="w-8 h-8 text-green-400" />
+              </div>
+            </div>
+            <div className="dashboard-card rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">Enterprise Users</p>
+                  <p className="text-2xl font-bold text-white">
+                    {users.filter(u => u.subscription.tierId === 'enterprise').length}
+                  </p>
+                </div>
+                <Crown className="w-8 h-8 text-yellow-400" />
+              </div>
+            </div>
+            <div className="dashboard-card rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">This Month</p>
+                  <p className="text-2xl font-bold text-white">
+                    {users.filter(u => {
+                      const created = new Date(u.createdAt)
+                      const now = new Date()
+                      return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear()
+                    }).length}
+                  </p>
+                </div>
+                <Calendar className="w-8 h-8 text-blue-400" />
+              </div>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="dashboard-card rounded-xl p-6 mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search users..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value as any)}
+                  className="px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="admin">Admin</option>
+                  <option value="user">User</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Users Table */}
+          <div className="dashboard-card rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-900/50 border-b border-gray-700">
+                  <tr>
+                    <th className="text-left p-4 font-medium text-gray-300">User</th>
+                    <th className="text-left p-4 font-medium text-gray-300">Role</th>
+                    <th className="text-left p-4 font-medium text-gray-300">Plan</th>
+                    <th className="text-left p-4 font-medium text-gray-300">Status</th>
+                    <th className="text-left p-4 font-medium text-gray-300">Created</th>
+                    <th className="text-left p-4 font-medium text-gray-300">Last Login</th>
+                    <th className="text-left p-4 font-medium text-gray-300">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((u) => (
+                    <tr key={u.id} className="border-b border-gray-800 hover:bg-gray-800/30">
+                      <td className="p-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                            <span className="text-white font-medium">
+                              {u.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-white">{u.name}</p>
+                            <div className="flex items-center space-x-1 text-sm text-gray-400">
+                              <Mail className="w-3 h-3" />
+                              <span>{u.email}</span>
+                            </div>
+                            {u.company && (
+                              <div className="flex items-center space-x-1 text-sm text-gray-500">
+                                <Building className="w-3 h-3" />
+                                <span>{u.company}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-2 py-1 text-xs rounded ${
+                          u.role === 'admin' 
+                            ? 'bg-purple-500/20 text-purple-400' 
+                            : 'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {u.role === 'admin' ? 'Admin' : 'User'}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center space-x-2">
+                          <Crown className="w-4 h-4 text-yellow-400" />
+                          <span className="text-white">{u.subscription.tierName}</span>
+                          <span className="text-xs text-gray-400">
+                            ({u.subscription.usedAgents}/{u.subscription.maxAgents})
                           </span>
                         </div>
-                        <div>
-                          <p className="font-medium text-white">{u.name}</p>
-                          <div className="flex items-center space-x-1 text-sm text-gray-400">
-                            <Mail className="w-3 h-3" />
-                            <span>{u.email}</span>
-                          </div>
-                          {u.company && (
-                            <div className="flex items-center space-x-1 text-sm text-gray-500">
-                              <Building className="w-3 h-3" />
-                              <span>{u.company}</span>
-                            </div>
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-2 py-1 text-xs rounded ${
+                          u.isActive 
+                            ? 'bg-green-500/20 text-green-400' 
+                            : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {u.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="p-4 text-gray-400 text-sm">
+                        {formatDate(u.createdAt)}
+                      </td>
+                      <td className="p-4 text-gray-400 text-sm">
+                        {u.lastLogin ? formatDate(u.lastLogin) : 'Never'}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => setEditingUser(u)}
+                            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          {u.id !== user?.id && (
+                            <button
+                              onClick={() => handleDeleteUser(u.id)}
+                              className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 text-xs rounded ${
-                        u.role === 'admin' 
-                          ? 'bg-purple-500/20 text-purple-400' 
-                          : 'bg-blue-500/20 text-blue-400'
-                      }`}>
-                        {u.role === 'admin' ? 'Admin' : 'User'}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center space-x-2">
-                        <Crown className="w-4 h-4 text-yellow-400" />
-                        <span className="text-white">{u.subscription.tierName}</span>
-                        <span className="text-xs text-gray-400">
-                          ({u.subscription.usedAgents}/{u.subscription.maxAgents})
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 text-xs rounded ${
-                        u.isActive 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-red-500/20 text-red-400'
-                      }`}>
-                        {u.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-400 text-sm">
-                      {formatDate(u.createdAt)}
-                    </td>
-                    <td className="p-4 text-gray-400 text-sm">
-                      {u.lastLogin ? formatDate(u.lastLogin) : 'Never'}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => setEditingUser(u)}
-                          className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        {u.id !== user?.id && (
-                          <button
-                            onClick={() => handleDeleteUser(u.id)}
-                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -324,6 +396,9 @@ export default function AdminPage() {
           onUpdate={handleUpdateUser}
         />
       )}
+      
+      {/* Security Monitor for Admins */}
+      <SecurityMonitor />
     </div>
   )
 }
@@ -348,6 +423,12 @@ function CreateUserModal({
     }
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [passwordStrength, setPasswordStrength] = useState<{
+    score: number
+    feedback: string[]
+    isValid: boolean
+  }>({ score: 0, feedback: [], isValid: false })
 
   const tierOptions = [
     { id: 'basic', name: 'Basic', maxAgents: 1 },
@@ -356,8 +437,57 @@ function CreateUserModal({
     { id: 'enterprise', name: 'Enterprise', maxAgents: 5 }
   ]
 
+  const validatePasswordStrength = (password: string) => {
+    const feedback: string[] = []
+    let score = 0
+
+    if (password.length >= 8) {
+      score += 1
+    } else {
+      feedback.push('At least 8 characters')
+    }
+
+    if (/[A-Z]/.test(password)) {
+      score += 1
+    } else {
+      feedback.push('One uppercase letter')
+    }
+
+    if (/[a-z]/.test(password)) {
+      score += 1
+    } else {
+      feedback.push('One lowercase letter')
+    }
+
+    if (/[0-9]/.test(password)) {
+      score += 1
+    } else {
+      feedback.push('One number')
+    }
+
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      score += 1
+    } else {
+      feedback.push('One special character')
+    }
+
+    const isValid = score >= 5
+    return { score, feedback, isValid }
+  }
+
+  const handlePasswordChange = (password: string) => {
+    setFormData({ ...formData, password })
+    setPasswordStrength(validatePasswordStrength(password))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!passwordStrength.isValid) {
+      toast.error('Please ensure password meets all requirements')
+      return
+    }
+
     setIsSubmitting(true)
     
     try {
@@ -367,9 +497,21 @@ function CreateUserModal({
     }
   }
 
+  const getStrengthColor = (score: number) => {
+    if (score < 2) return 'bg-red-500'
+    if (score < 4) return 'bg-yellow-500'
+    return 'bg-green-500'
+  }
+
+  const getStrengthText = (score: number) => {
+    if (score < 2) return 'Weak'
+    if (score < 4) return 'Medium'
+    return 'Strong'
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-xl p-6 w-full max-w-md border border-white/10">
+      <div className="bg-gray-900 rounded-xl p-6 w-full max-w-md border border-white/10 max-h-[90vh] overflow-y-auto">
         <h2 className="text-xl font-semibold text-white mb-6">Create New User</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -397,13 +539,49 @@ function CreateUserModal({
           
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
-            <input
-              type="password"
-              required
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={formData.password}
+                onChange={(e) => handlePasswordChange(e.target.value)}
+                className="w-full px-3 py-2 pr-10 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            
+            {/* Password Strength Indicator */}
+            {formData.password && (
+              <div className="mt-2">
+                <div className="flex items-center space-x-2 mb-1">
+                  <div className="flex-1 h-1 bg-gray-700 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-300 ${getStrengthColor(passwordStrength.score)}`}
+                      style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
+                    />
+                  </div>
+                  <span className={`text-xs font-medium ${
+                    passwordStrength.score < 2 ? 'text-red-400' :
+                    passwordStrength.score < 4 ? 'text-yellow-400' : 'text-green-400'
+                  }`}>
+                    {getStrengthText(passwordStrength.score)}
+                  </span>
+                </div>
+                
+                {passwordStrength.feedback.length > 0 && (
+                  <div className="text-xs text-gray-400">
+                    <span>Required: </span>
+                    {passwordStrength.feedback.join(', ')}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           <div>
@@ -451,7 +629,7 @@ function CreateUserModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !passwordStrength.isValid}
               className="btn-primary px-6 py-2 rounded-lg text-white font-medium disabled:opacity-50"
             >
               {isSubmitting ? 'Creating...' : 'Create User'}
