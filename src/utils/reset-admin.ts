@@ -20,8 +20,8 @@ export const resetAdminAccount = () => {
   console.log('🔄 Admin account reset complete!')
   console.log('📝 Please refresh the page to initialize the new admin account')
   console.log('🔐 Admin credentials:')
-  console.log('   Email: admin@vertirix.com')
-  console.log('   Password: Vx#2024!SecureAdmin@Portal')
+  console.log('   Email: abdulla.hourani@vertirix.com')
+  console.log('   Password: Vertirix2024@Admin')
   
   return true
 }
@@ -39,6 +39,6 @@ localStorage.removeItem('vertirix-session');
 location.reload();
 
 2. After the page reloads, login with:
-   Email: admin@vertirix.com
-   Password: Vx#2024!SecureAdmin@Portal
+   Email: abdulla.hourani@vertirix.com
+   Password: Vertirix2024@Admin
 `) 

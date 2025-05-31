@@ -128,16 +128,16 @@ NODE_ENV=development
 ### Admin Account
 The system includes a pre-configured admin account:
 
-- **Email**: `admin@vertirix.com`
-- **Password**: Contact system administrator or check secure credentials
+- **Email**: Contact system administrator for credentials
+- **Password**: Secure password provided by administrator
 - **Access**: Full system administration capabilities
 
-**⚠️ Important**: The admin password is securely configured in the system. For production deployments, please ensure you have received the admin credentials through a secure channel.
+**⚠️ Important**: Admin credentials are securely configured in the system. For production deployments, please ensure you have received the admin credentials through a secure channel.
 
 ### First Login Steps
 1. Navigate to your deployment URL (e.g., `https://your-app.vercel.app`)
 2. Go to the login page (`/login`)
-3. Enter the admin credentials
+3. Enter the admin credentials provided by your administrator
 4. Access the admin dashboard
 5. Create additional users as needed through the admin panel
 

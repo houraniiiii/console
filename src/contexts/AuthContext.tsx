@@ -19,8 +19,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 // Default admin user
 const DEFAULT_ADMIN: User = {
   id: 'admin-001',
-  email: 'admin@vertirix.com',
-  name: 'System Administrator',
+  email: 'abdulla.hourani@vertirix.com',
+  name: 'Abdulla Hourani',
   role: 'admin',
   subscription: {
     tierId: 'enterprise',
@@ -186,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (!users.find(u => u.email === DEFAULT_ADMIN.email)) {
         // Use a fixed secure admin password for consistent access
-        const adminPassword = 'Vx#2024!SecureAdmin@Portal'
+        const adminPassword = 'Vertirix2024@Admin'
         
         const updatedUsers = [...users, DEFAULT_ADMIN]
         localStorage.setItem('vertirix-users', JSON.stringify(updatedUsers))
