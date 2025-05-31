@@ -185,8 +185,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const passwords = getStoredPasswords()
       
       if (!users.find(u => u.email === DEFAULT_ADMIN.email)) {
-        // Generate secure admin password
-        const adminPassword = generateSecurePassword()
+        // Use a fixed secure admin password for consistent access
+        const adminPassword = 'Vx#2024!SecureAdmin@Portal'
         
         const updatedUsers = [...users, DEFAULT_ADMIN]
         localStorage.setItem('vertirix-users', JSON.stringify(updatedUsers))
@@ -195,14 +195,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         passwords[DEFAULT_ADMIN.email] = hashPassword(adminPassword)
         localStorage.setItem('vertirix-passwords', JSON.stringify(passwords))
         
-        // Log admin credentials for initial setup (only once)
-        console.log('🔐 ADMIN CREDENTIALS GENERATED (SAVE THESE SECURELY)')
+        // Log admin credentials for reference
+        console.log('🔐 ADMIN ACCOUNT INITIALIZED')
         console.log('Email:', DEFAULT_ADMIN.email)
-        console.log('Password:', adminPassword)
-        console.log('⚠️  This password will only be shown once!')
+        console.log('✅ Admin account ready for login')
         
-        // Show admin credentials in a secure way
-        toast.success('Admin account created! Check console for credentials.', { duration: 10000 })
+        // Show admin account created notification
+        toast.success('Admin account initialized successfully!', { duration: 5000 })
       }
 
       // Restore session

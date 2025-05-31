@@ -40,4 +40,10 @@ next-env.d.ts
 *.swo
 
 # OS
-Thumbs.db 
+Thumbs.db
+
+# Security - Never commit credentials
+ADMIN_CREDENTIALS.md
+*_CREDENTIALS.md
+credentials.txt
+passwords.txt 

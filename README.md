@@ -125,22 +125,27 @@ NODE_ENV=development
 
 ## 🔐 Initial Setup
 
-### Admin Account Creation
-The system automatically creates a secure admin account on first startup:
+### Admin Account
+The system includes a pre-configured admin account:
 
 - **Email**: `admin@vertirix.com`
-- **Password**: Randomly generated 16-character secure password
+- **Password**: Contact system administrator or check secure credentials
 - **Access**: Full system administration capabilities
 
-**⚠️ Important**: The admin password is only displayed once in the browser console during initial setup. Make sure to save it securely!
+**⚠️ Important**: The admin password is securely configured in the system. For production deployments, please ensure you have received the admin credentials through a secure channel.
 
 ### First Login Steps
-1. Start the application with `npm run dev`
-2. Open browser console (F12 → Console tab)
-3. Look for the admin credentials in the console output
-4. Save the generated password securely
-5. Log in with the admin account
-6. Create additional users as needed through the admin panel
+1. Navigate to your deployment URL (e.g., `https://your-app.vercel.app`)
+2. Go to the login page (`/login`)
+3. Enter the admin credentials
+4. Access the admin dashboard
+5. Create additional users as needed through the admin panel
+
+### Security Best Practices
+- Change the admin password after first login if desired
+- Create individual user accounts for team members
+- Never share admin credentials
+- Use strong passwords for all accounts
 
 ### Creating Your First User
 1. Login as admin
