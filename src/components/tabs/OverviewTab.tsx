@@ -81,20 +81,27 @@ export default function OverviewTab({ stats, subscription, onTabChange }: Overvi
       {/* Quick Actions */}
       <div className="dashboard-card rounded-xl p-6">
         <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
-        <div className="flex space-x-4">
+        <div className="flex flex-wrap gap-4">
           <button 
             onClick={() => onTabChange?.('contacts')}
             className="btn-secondary font-medium px-6 py-3 rounded-lg flex items-center hover:bg-gray-700 transition-colors"
           >
             <Users className="w-4 h-4 mr-2" />
-            Upload Contacts
+            Manage Contacts
           </button>
           <button 
             onClick={() => onTabChange?.('campaigns')}
             className="btn-secondary font-medium px-6 py-3 rounded-lg flex items-center hover:bg-gray-700 transition-colors"
           >
             <Megaphone className="w-4 h-4 mr-2" />
-            Start Campaign
+            Create Campaign
+          </button>
+          <button 
+            onClick={() => onTabChange?.('agents')}
+            className="btn-secondary font-medium px-6 py-3 rounded-lg flex items-center hover:bg-gray-700 transition-colors"
+          >
+            <Activity className="w-4 h-4 mr-2" />
+            Configure Agents
           </button>
         </div>
       </div>
@@ -129,6 +136,18 @@ export default function OverviewTab({ stats, subscription, onTabChange }: Overvi
                 Active
               </span>
             </div>
+            {subscription.usedAgents > 0 && (
+              <div className="flex items-center space-x-4 p-3 bg-gray-800/50 rounded-lg">
+                <div className="w-2 h-2 bg-purple-400 rounded-full" />
+                <div className="flex-1">
+                  <p className="text-sm text-white">Subscription: {subscription.tierName} plan active</p>
+                  <p className="text-xs text-gray-400">{subscription.usedAgents} of {subscription.maxAgents} agents configured</p>
+                </div>
+                <span className="text-xs bg-purple-400/20 text-purple-400 px-2 py-1 rounded">
+                  Active
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -35,8 +35,8 @@ export default function LoginPage() {
     
     if (!formData.password) {
       newErrors.password = 'Password is required'
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters'
     }
     
     setErrors(newErrors)
@@ -59,16 +59,6 @@ export default function LoginPage() {
       }
     } finally {
       setIsSubmitting(false)
-    }
-  }
-
-  const fillDemoCredentials = (type: 'admin' | 'demo') => {
-    if (type === 'admin') {
-      setFormData({
-        email: 'admin@vertirix.com',
-        password: 'admin123'
-      })
-      setErrors({})
     }
   }
 
@@ -140,6 +130,7 @@ export default function LoginPage() {
                     errors.email ? 'border-red-500' : 'border-gray-700'
                   }`}
                   placeholder="Enter your email"
+                  autoComplete="email"
                 />
               </div>
               {errors.email && (
@@ -168,6 +159,7 @@ export default function LoginPage() {
                     errors.password ? 'border-red-500' : 'border-gray-700'
                   }`}
                   placeholder="Enter your password"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
@@ -201,28 +193,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 pt-6 border-t border-gray-700">
-            <p className="text-sm text-gray-400 mb-3">Demo Access:</p>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => fillDemoCredentials('admin')}
-                className="w-full text-left p-3 bg-gray-800/30 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-white">Admin Access</p>
-                    <p className="text-xs text-gray-400">admin@vertirix.com</p>
-                  </div>
-                  <div className="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs rounded">
-                    Admin
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}

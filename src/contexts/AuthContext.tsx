@@ -39,16 +39,43 @@ const SECURITY_CONFIG = {
   maxLoginAttempts: 5,
   lockoutDuration: 15 * 60 * 1000, // 15 minutes
   sessionDuration: 24 * 60 * 60 * 1000, // 24 hours
-  passwordMinLength: 8,
+  passwordMinLength: 12,
   requireSpecialChar: true
 }
 
 // Security utilities
 const generateUserId = () => `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
+const generateSecurePassword = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
+  let password = ''
+  
+  // Ensure at least one character from each required category
+  password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]
+  password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]
+  password += '0123456789'[Math.floor(Math.random() * 10)]
+  password += '!@#$%^&*'[Math.floor(Math.random() * 8)]
+  
+  // Fill remaining length with random characters
+  for (let i = 4; i < 16; i++) {
+    password += chars[Math.floor(Math.random() * chars.length)]
+  }
+  
+  // Shuffle the password
+  return password.split('').sort(() => Math.random() - 0.5).join('')
+}
+
 const hashPassword = (password: string) => {
   // In production, use proper bcrypt or similar
-  return btoa(password + 'vertirix-salt-2024')
+  const salt = 'vertirix-salt-2024-secure'
+  let hash = 0
+  const str = password + salt
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return btoa(hash.toString())
 }
 
 const verifyPassword = (password: string, hash: string) => {
@@ -155,14 +182,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // Ensure default admin exists
       const users = getStoredUsers()
+      const passwords = getStoredPasswords()
+      
       if (!users.find(u => u.email === DEFAULT_ADMIN.email)) {
+        // Generate secure admin password
+        const adminPassword = generateSecurePassword()
+        
         const updatedUsers = [...users, DEFAULT_ADMIN]
         localStorage.setItem('vertirix-users', JSON.stringify(updatedUsers))
         
         // Store admin password
-        const passwords = getStoredPasswords()
-        passwords[DEFAULT_ADMIN.email] = hashPassword('admin123')
+        passwords[DEFAULT_ADMIN.email] = hashPassword(adminPassword)
         localStorage.setItem('vertirix-passwords', JSON.stringify(passwords))
+        
+        // Log admin credentials for initial setup (only once)
+        console.log('🔐 ADMIN CREDENTIALS GENERATED (SAVE THESE SECURELY)')
+        console.log('Email:', DEFAULT_ADMIN.email)
+        console.log('Password:', adminPassword)
+        console.log('⚠️  This password will only be shown once!')
+        
+        // Show admin credentials in a secure way
+        toast.success('Admin account created! Check console for credentials.', { duration: 10000 })
       }
 
       // Restore session

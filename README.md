@@ -10,6 +10,8 @@ A modern, enterprise-grade voice agent management platform built with Next.js 14
 - **Role-based access control** (Admin vs User)
 - **Session restoration** on page refresh
 - **Protected routes** with automatic redirects
+- **Account lockout protection** (5 failed attempts = 15min lockout)
+- **Strong password requirements** (12+ chars, uppercase, lowercase, numbers, special chars)
 
 ### Admin Panel
 - **Complete user management** dashboard
@@ -66,13 +68,23 @@ A modern, enterprise-grade voice agent management platform built with Next.js 14
 4. **Open your browser**
    Navigate to `http://localhost:3000`
 
-## 🔐 Default Credentials
+## 🔐 Initial Setup
 
-### Admin Access
+### Admin Account Creation
+The system automatically creates a secure admin account on first startup:
+
 - **Email**: admin@vertirix.com
-- **Password**: admin123
+- **Password**: Randomly generated 16-character secure password
+- **Access**: Full system administration capabilities
 
-The admin account is automatically created on first run with full system access.
+**Important**: The admin password is only displayed once in the browser console during initial setup. Make sure to save it securely!
+
+### First Login Steps
+1. Start the application
+2. Check the browser console for admin credentials
+3. Save the generated password securely
+4. Log in with the admin account
+5. Create additional users as needed
 
 ## 🏗️ Project Structure
 
@@ -103,6 +115,8 @@ src/
 - Password hashing with salt
 - Role-based access control
 - Automatic session expiry
+- Account lockout protection
+- Strong password requirements
 
 ### Admin Dashboard
 - User management interface
@@ -140,13 +154,16 @@ The application is designed for easy backend integration:
 
 ## 🔒 Security Features
 
-- Session-based authentication with expiry
-- Password hashing (production-ready with bcrypt placeholder)
+- Session-based authentication with 24-hour expiry
+- Advanced password hashing (production-ready with bcrypt placeholder)
 - Role-based routing and access control
 - Protected API endpoints pattern
 - Input validation and sanitization
 - CSRF protection patterns
 - User data isolation
+- Account lockout after failed attempts
+- Strong password requirements (12+ characters)
+- Secure password generation for admin account
 
 ## 📊 Subscription Tiers
 

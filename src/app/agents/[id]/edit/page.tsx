@@ -2,18 +2,55 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, Save, Bot, Check, Volume2, Globe, MessageSquare, Clock, Calendar } from 'lucide-react'
+import { ArrowLeft, Save, Bot, Check, Volume2, Globe, MessageSquare, Clock, Calendar, AlertTriangle } from 'lucide-react'
 import { Agent } from '@/types'
-import { useConsoleData } from '@/hooks/useConsoleData'
 import toast from 'react-hot-toast'
+
+interface ConfirmDialogProps {
+  isOpen: boolean
+  title: string
+  message: string
+  onConfirm: () => void
+  onCancel: () => void
+}
+
+function ConfirmDialog({ isOpen, title, message, onConfirm, onCancel }: ConfirmDialogProps) {
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 border border-gray-700">
+        <div className="flex items-center space-x-3 mb-4">
+          <AlertTriangle className="w-6 h-6 text-yellow-400" />
+          <h3 className="text-lg font-semibold text-white">{title}</h3>
+        </div>
+        <p className="text-gray-300 mb-6">{message}</p>
+        <div className="flex space-x-3">
+          <button
+            onClick={onConfirm}
+            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+          >
+            Discard Changes
+          </button>
+          <button
+            onClick={onCancel}
+            className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+          >
+            Keep Editing
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function EditAgentPage() {
   const router = useRouter()
   const params = useParams()
   const agentId = params.id as string
-  const { agents, updateAgent } = useConsoleData()
 
   const [agent, setAgent] = useState<Agent | null>(null)
+  const [originalData, setOriginalData] = useState<any>(null)
   const [formData, setFormData] = useState({
     voiceSpeed: 1.0,
     leadingMessage: '',
@@ -36,38 +73,68 @@ export default function EditAgentPage() {
     autoActivate: true
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
+  // Load agent data
   useEffect(() => {
-    // Load agents from localStorage (admin-managed)
-    const adminAgents = localStorage.getItem('admin-agents')
-    let allAgents: Agent[] = []
-    
-    if (adminAgents) {
-      allAgents = JSON.parse(adminAgents)
-    }
-    
-    const foundAgent = allAgents.find(a => a.id === agentId)
-    if (foundAgent) {
-      setAgent(foundAgent)
-      setFormData(foundAgent.customerConfig)
-      if (foundAgent.schedule) {
-        setScheduleData(foundAgent.schedule)
-      }
-    } else if (agents.length > 0) {
-      // Fallback to agents from hook if admin agents not found
-      const foundAgentFromHook = agents.find(a => a.id === agentId)
-      if (foundAgentFromHook) {
-        setAgent(foundAgentFromHook)
-        setFormData(foundAgentFromHook.customerConfig)
-        if (foundAgentFromHook.schedule) {
-          setScheduleData(foundAgentFromHook.schedule)
+    const loadAgent = () => {
+      // Load agents from localStorage (admin-managed)
+      const adminAgents = localStorage.getItem('admin-agents')
+      let allAgents: Agent[] = []
+      
+      if (adminAgents) {
+        try {
+          allAgents = JSON.parse(adminAgents)
+        } catch (error) {
+          console.error('Error parsing admin agents:', error)
+          toast.error('Error loading agent data')
+          return
         }
+      }
+      
+      const foundAgent = allAgents.find(a => a.id === agentId)
+      if (foundAgent) {
+        setAgent(foundAgent)
+        const initialFormData = { ...foundAgent.customerConfig }
+        const initialScheduleData = foundAgent.schedule || {
+          enabled: false,
+          startTime: '09:00',
+          endTime: '17:00',
+          timezone: 'UTC',
+          daysOfWeek: [],
+          autoActivate: true
+        }
+        
+        setFormData(initialFormData)
+        setScheduleData(initialScheduleData)
+        setOriginalData({
+          customerConfig: initialFormData,
+          schedule: initialScheduleData
+        })
       } else {
         toast.error('Agent not found')
         router.push('/')
       }
     }
-  }, [agentId, agents, router])
+
+    if (agentId) {
+      loadAgent()
+    }
+  }, [agentId, router])
+
+  // Detect unsaved changes
+  useEffect(() => {
+    if (!originalData) return
+
+    const currentData = {
+      customerConfig: formData,
+      schedule: scheduleData
+    }
+
+    const hasChanges = JSON.stringify(currentData) !== JSON.stringify(originalData)
+    setHasUnsavedChanges(hasChanges)
+  }, [formData, scheduleData, originalData])
 
   const handleSave = async () => {
     if (!agent) return
@@ -86,20 +153,69 @@ export default function EditAgentPage() {
     setIsSaving(true)
     
     try {
-      // Update agent customer configuration
-      await updateAgent(agentId, { 
+      // Load current agents from localStorage
+      const adminAgents = localStorage.getItem('admin-agents')
+      let allAgents: Agent[] = []
+      
+      if (adminAgents) {
+        allAgents = JSON.parse(adminAgents)
+      }
+
+      // Update the specific agent
+      const updatedAgents = allAgents.map(a => {
+        if (a.id === agentId) {
+          return {
+            ...a,
+            customerConfig: formData,
+            schedule: scheduleData,
+            lastUsed: new Date()
+          }
+        }
+        return a
+      })
+
+      // Save back to localStorage
+      localStorage.setItem('admin-agents', JSON.stringify(updatedAgents))
+
+      // Update original data to reflect saved state
+      setOriginalData({
+        customerConfig: { ...formData },
+        schedule: { ...scheduleData }
+      })
+      
+      // Update the agent state
+      setAgent(prev => prev ? {
+        ...prev,
         customerConfig: formData,
         schedule: scheduleData,
         lastUsed: new Date()
-      })
-      
+      } : null)
+
       toast.success('Agent updated successfully!')
-      router.push('/')
+      setHasUnsavedChanges(false)
     } catch (error) {
+      console.error('Save error:', error)
       toast.error('Failed to update agent')
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const handleBack = () => {
+    if (hasUnsavedChanges) {
+      setShowConfirmDialog(true)
+    } else {
+      router.push('/')
+    }
+  }
+
+  const handleConfirmDiscard = () => {
+    setShowConfirmDialog(false)
+    router.push('/')
+  }
+
+  const handleCancelDiscard = () => {
+    setShowConfirmDialog(false)
   }
 
   const handleDayToggle = (day: number) => {
@@ -123,13 +239,6 @@ export default function EditAgentPage() {
     return 'Very Fast'
   }
 
-  const getVoiceDescription = (speed: number) => {
-    if (speed <= 0.7) return 'Slow and clear delivery for better comprehension'
-    if (speed <= 1.0) return 'Normal speaking pace for natural conversation'
-    if (speed <= 1.2) return 'Fast-paced delivery for efficient communication'
-    return 'Very fast delivery for quick interactions'
-  }
-
   const isFormValid = formData.leadingMessage.trim() && formData.personality.trim()
 
   if (!agent) {
@@ -150,7 +259,7 @@ export default function EditAgentPage() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => router.push('/')}
+              onClick={handleBack}
               className="btn-secondary p-2 rounded-lg hover:bg-gray-700/50 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -158,11 +267,16 @@ export default function EditAgentPage() {
             <div>
               <h1 className="text-3xl font-bold text-white">Edit Voice Agent</h1>
               <p className="text-gray-400">{agent.name} • {agent.description}</p>
+              {hasUnsavedChanges && (
+                <p className="text-yellow-400 text-sm mt-1">
+                  • You have unsaved changes
+                </p>
+              )}
             </div>
           </div>
           <button
             onClick={handleSave}
-            disabled={!isFormValid || isSaving}
+            disabled={!isFormValid || isSaving || !hasUnsavedChanges}
             className="btn-primary px-6 py-3 rounded-lg text-white font-medium flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? (
@@ -327,108 +441,125 @@ export default function EditAgentPage() {
           </div>
 
           {/* Schedule Configuration */}
-          <div className="mt-6">
-            <h4 className="text-lg font-semibold text-white mb-2">Schedule Configuration</h4>
-            <div className="flex items-center space-x-4">
+          <div className="mt-8 border-t border-gray-700 pt-6">
+            <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
+              <Calendar className="w-5 h-5 mr-2 text-blue-400" />
+              Schedule Configuration
+            </h4>
+            <div className="flex items-center space-x-4 mb-4">
               <input
                 type="checkbox"
+                id="enableSchedule"
                 checked={scheduleData.enabled}
                 onChange={(e) => setScheduleData({ 
                   ...scheduleData, 
                   enabled: e.target.checked
                 })}
-                className="w-4 h-4 text-primary"
+                className="w-4 h-4 text-primary bg-gray-800 border-gray-600 rounded focus:ring-primary"
               />
-              <label className="text-sm font-medium text-gray-300">Enable Schedule</label>
+              <label htmlFor="enableSchedule" className="text-sm font-medium text-gray-300">
+                Enable Automatic Scheduling
+              </label>
             </div>
-          </div>
 
-          {/* Time Settings */}
-          <div className="mt-4">
-            <h5 className="text-md font-semibold text-white mb-2">Time Settings</h5>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Start Time</label>
-                <input
-                  type="time"
-                  value={scheduleData.startTime}
-                  onChange={(e) => setScheduleData({ 
-                    ...scheduleData, 
-                    startTime: e.target.value
-                  })}
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">End Time</label>
-                <input
-                  type="time"
-                  value={scheduleData.endTime}
-                  onChange={(e) => setScheduleData({ 
-                    ...scheduleData, 
-                    endTime: e.target.value
-                  })}
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Timezone */}
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">Timezone</label>
-            <select
-              value={scheduleData.timezone}
-              onChange={(e) => setScheduleData({ 
-                ...scheduleData, 
-                timezone: e.target.value
-              })}
-              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-            >
-              <option value="UTC">UTC</option>
-              <option value="America/New_York">America/New_York</option>
-              <option value="America/Los_Angeles">America/Los_Angeles</option>
-              <option value="Europe/London">Europe/London</option>
-              <option value="Europe/Paris">Europe/Paris</option>
-              <option value="Asia/Shanghai">Asia/Shanghai</option>
-              <option value="Asia/Tokyo">Asia/Tokyo</option>
-              <option value="Australia/Sydney">Australia/Sydney</option>
-            </select>
-          </div>
-
-          {/* Days of Week */}
-          <div className="mt-4">
-            <h5 className="text-md font-semibold text-white mb-2">Days of Week</h5>
-            <div className="flex items-center space-x-4">
-              {Array.from({ length: 7 }, (_, i) => (
-                <div key={i} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={scheduleData.daysOfWeek.includes(i)}
-                    onChange={(e) => handleDayToggle(i)}
-                    className="w-4 h-4 text-primary"
-                  />
-                  <label className="text-sm font-medium text-gray-300">{getDayName(i)}</label>
+            {scheduleData.enabled && (
+              <div className="space-y-6 ml-6 pl-4 border-l-2 border-blue-500/30">
+                {/* Time Settings */}
+                <div>
+                  <h5 className="text-md font-semibold text-white mb-3">Active Hours</h5>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Start Time</label>
+                      <input
+                        type="time"
+                        value={scheduleData.startTime}
+                        onChange={(e) => setScheduleData({ 
+                          ...scheduleData, 
+                          startTime: e.target.value
+                        })}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">End Time</label>
+                      <input
+                        type="time"
+                        value={scheduleData.endTime}
+                        onChange={(e) => setScheduleData({ 
+                          ...scheduleData, 
+                          endTime: e.target.value
+                        })}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                      />
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Auto-activation */}
-          <div className="mt-4">
-            <h5 className="text-md font-semibold text-white mb-2">Auto-activation</h5>
-            <div className="flex items-center space-x-4">
-              <input
-                type="checkbox"
-                checked={scheduleData.autoActivate}
-                onChange={(e) => setScheduleData({ 
-                  ...scheduleData, 
-                  autoActivate: e.target.checked
-                })}
-                className="w-4 h-4 text-primary"
-              />
-              <label className="text-sm font-medium text-gray-300">Auto-activate</label>
-            </div>
+                {/* Timezone */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Timezone</label>
+                  <select
+                    value={scheduleData.timezone}
+                    onChange={(e) => setScheduleData({ 
+                      ...scheduleData, 
+                      timezone: e.target.value
+                    })}
+                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                  >
+                    <option value="UTC">UTC</option>
+                    <option value="America/New_York">America/New_York</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles</option>
+                    <option value="Europe/London">Europe/London</option>
+                    <option value="Europe/Paris">Europe/Paris</option>
+                    <option value="Asia/Shanghai">Asia/Shanghai</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo</option>
+                    <option value="Australia/Sydney">Australia/Sydney</option>
+                  </select>
+                </div>
+
+                {/* Days of Week */}
+                <div>
+                  <h5 className="text-md font-semibold text-white mb-3">Active Days</h5>
+                  <div className="grid grid-cols-7 gap-2">
+                    {Array.from({ length: 7 }, (_, i) => (
+                      <label key={i} className="flex flex-col items-center space-y-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={scheduleData.daysOfWeek.includes(i)}
+                          onChange={() => handleDayToggle(i)}
+                          className="w-4 h-4 text-primary bg-gray-800 border-gray-600 rounded focus:ring-primary"
+                        />
+                        <span className="text-xs font-medium text-gray-300">
+                          {getDayName(i).slice(0, 3)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Auto-activation */}
+                <div>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="checkbox"
+                      id="autoActivate"
+                      checked={scheduleData.autoActivate}
+                      onChange={(e) => setScheduleData({ 
+                        ...scheduleData, 
+                        autoActivate: e.target.checked
+                      })}
+                      className="w-4 h-4 text-primary bg-gray-800 border-gray-600 rounded focus:ring-primary"
+                    />
+                    <label htmlFor="autoActivate" className="text-sm font-medium text-gray-300">
+                      Auto-activate during scheduled hours
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1 ml-8">
+                    Agent will automatically activate/deactivate based on schedule
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Live Preview */}
@@ -444,25 +575,25 @@ export default function EditAgentPage() {
                   <span className="text-white font-medium">{getVoiceTypeDisplay(formData.voiceSpeed)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Language:</span>
-                  <span className="text-white">{formData.customInstructions === 'en-US' ? 'English (US)' : 'Arabic'}</span>
+                  <span className="text-gray-500">Response Time:</span>
+                  <span className="text-white">{formData.responseDelay}ms</span>
                 </div>
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Response Time:</span>
-                  <span className="text-white">{formData.responseDelay}ms</span>
-                </div>
-                <div className="flex justify-between">
                   <span className="text-gray-500">Personality:</span>
                   <span className="text-white truncate">{formData.personality || 'Not set'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Custom Instructions:</span>
+                  <span className="text-white">{formData.customInstructions ? 'Set' : 'None'}</span>
                 </div>
               </div>
             </div>
 
             {/* Schedule Preview */}
             {scheduleData.enabled && (
-              <div className="mt-6">
+              <div className="mt-6 pt-4 border-t border-gray-700">
                 <h5 className="text-sm font-medium text-gray-300 mb-2 flex items-center">
                   <Calendar className="w-4 h-4 mr-2 text-blue-400" />
                   Schedule Preview
@@ -496,17 +627,11 @@ export default function EditAgentPage() {
                     </div>
                   </div>
                 </div>
-                
-                <div className="mt-4 p-3 bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
-                  <p className="text-blue-400 text-xs">
-                    <strong>Note:</strong> Agent will automatically activate during scheduled hours and deactivate when outside the schedule.
-                  </p>
-                </div>
               </div>
             )}
             
             <div className="mt-6">
-              <p className="text-gray-500 mb-2">First Message Preview:</p>
+              <p className="text-gray-500 mb-2">Initial Message Preview:</p>
               <div className="p-4 bg-gray-800 rounded-lg border-l-4 border-purple-500">
                 <p className="text-white text-sm leading-relaxed">
                   {formData.leadingMessage || 'No message set'}
@@ -516,6 +641,15 @@ export default function EditAgentPage() {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showConfirmDialog}
+        title="Discard Changes?"
+        message="You have unsaved changes. Are you sure you want to discard them and leave this page?"
+        onConfirm={handleConfirmDiscard}
+        onCancel={handleCancelDiscard}
+      />
     </div>
   )
 } 
